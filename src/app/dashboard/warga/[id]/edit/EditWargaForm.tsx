@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { updateWargaAction } from './actions'
+import { formatTitleCase } from '@/lib/format-title-case'
 
 const DAFTAR_PEKERJAAN_RESMI = [
   'BELUM/TIDAK BEKERJA',
@@ -80,25 +81,6 @@ const DAFTAR_PEKERJAAN_RESMI = [
   'LAINNYA',
 ]
 
-export function formatTitleCase(str: string | null | undefined): string {
-  if (!str) return '-'
-  if (str === 'PNS' || str === 'TNI' || str === 'POLRI' || str === 'BUMN' || str === 'BUMD' || str === 'DPR-RI' || str === 'DPD' || str === 'BPK') {
-    return str
-  }
-  return str
-    .toLowerCase()
-    .split(' ')
-    .map((word) => {
-      if (word.includes('/')) {
-        return word
-          .split('/')
-          .map((sub) => sub.charAt(0).toUpperCase() + sub.slice(1))
-          .join('/')
-      }
-      return word.charAt(0).toUpperCase() + word.slice(1)
-    })
-    .join(' ')
-}
 
 
 const AGAMA_OPTIONS = ['ISLAM', 'KRISTEN', 'KATOLIK', 'HINDU', 'BUDHA', 'KONGHUCU']

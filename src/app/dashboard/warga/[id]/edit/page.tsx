@@ -4,7 +4,8 @@ import { connection } from 'next/server'
 import Link from 'next/link'
 import { Suspense } from 'react'
 import { getWargaScope } from '@/lib/warga-scope'
-import EditWargaForm from './EditWargaForm' // Hapus formatTitleCase dari import ini jika ada
+import EditWargaForm from './EditWargaForm'
+import { formatTitleCase } from '@/lib/format-title-case'
 
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient }
 const prisma = globalForPrisma.prisma ?? new PrismaClient()
@@ -80,8 +81,7 @@ async function EditContent({ params }: { params: Promise<{ id: string }> }) {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Edit Data Warga</h1>
-          {/* Ubah baris ini agar tidak memanggil formatTitleCase di Server Component */}
-          <p className="text-sm text-slate-500">Perbarui informasi data kependudukan untuk warga ini.</p>
+          <p className="text-sm text-slate-500">Perbarui informasi data kependudukan untuk {formatTitleCase(warga.nama)}.</p>
         </div>
         <Link
           href={`/dashboard/warga/${warga.id}`}
