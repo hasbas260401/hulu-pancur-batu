@@ -1,0 +1,139 @@
+import { PrismaClient } from '@prisma/client'
+import { connection } from 'next/server'
+import { revalidatePath } from 'next/cache'
+import { Suspense } from 'react'
+import { auth } from '@/auth'
+import BansosClient from './BansosClient'
+
+const prisma = new PrismaClient()
+
+export default function BansosAdminPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{
+    program?: string;
+    status?: string;
+    q?: string;
+    page?: string;
+  }>
+}) {
+  return (
+    <Suspense 
+      fallback={
+        <div className="flex items-center justify-center min-h-[50vh] w-full">
+          <div className="flex items-center gap-3 bg-slate-900 text-white px-5 py-3 rounded-xl text-xs font-bold shadow-lg">
+            <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+            <span>Memuat data...</span>
+          </div>
+        </div>
+      }
+    >
+      <BansosContent searchParams={searchParams} />
+    </Suspense>
+  )
+}
+
+async function BansosContent({
+  searchParams,
+}: {
+  searchParams?: Promise<{
+    program?: string;
+    status?: string;
+    q?: string;
+    page?: string;
+  }>
+}) {
+  await connection()
+
+  const resolvedParams = await searchParams
+  const selectedProgram = resolvedParams?.program || ''
+  const selectedStatus = resolvedParams?.status || ''
+  const searchQuery = resolvedParams?.q || ''
+
+  const PAGE_SIZE = 5
+  const currentPage = Number(resolvedParams?.page) || 1
+  const skip = (currentPage - 1) * PAGE_SIZE
+
+  const session = await auth()
+  const user = session?.user as any
+
+  const isKadus = user?.role === 'KADUS'
+  const userDusunId = user?.dusunId
+  const dusunFilter = isKadus && userDusunId ? { warga: { dusunId: userDusunId } } : {}
+
+  const [totalPkh, totalBpnt, totalBltDd, totalPbiJk, totalBst, totalKeseluruhan] = await Promise.all([
+    prisma.bansos.count({ where: { AND: [dusunFilter, { program: { contains: 'PKH', mode: 'insensitive' } }] } }),
+    prisma.bansos.count({ where: { AND: [dusunFilter, { program: { contains: 'BPNT', mode: 'insensitive' } }] } }),
+    prisma.bansos.count({ where: { AND: [dusunFilter, { program: { contains: 'BLT-DD', mode: 'insensitive' } }] } }),
+    prisma.bansos.count({ where: { AND: [dusunFilter, { program: { contains: 'PBI-JK', mode: 'insensitive' } }] } }),
+    prisma.bansos.count({ where: { AND: [dusunFilter, { program: { contains: 'BST', mode: 'insensitive' } }] } }),
+    prisma.bansos.count({ where: dusunFilter }),
+  ])
+
+  const whereClause: any = { ...dusunFilter }
+  if (selectedProgram) whereClause.program = { contains: selectedProgram, mode: 'insensitive' }
+  if (selectedStatus) whereClause.status = selectedStatus
+  if (searchQuery) {
+    whereClause.OR = [
+      { warga: { nama: { contains: searchQuery, mode: 'insensitive' } } },
+      { warga: { nik: { contains: searchQuery, mode: 'insensitive' } } },
+      { program: { contains: searchQuery, mode: 'insensitive' } },
+    ]
+  }
+
+  const totalFilteredBansos = await prisma.bansos.count({ where: whereClause })
+  const totalPages = Math.ceil(totalFilteredBansos / PAGE_SIZE)
+
+  const daftarBansos = await prisma.bansos.findMany({
+    where: whereClause,
+    include: {
+      warga: {
+        include: { dusun: true, kk: true },
+      },
+    },
+    orderBy: { createdAt: 'desc' },
+    take: PAGE_SIZE,
+    skip: skip,
+  })
+
+  const stats = { totalPkh, totalBpnt, totalBltDd, totalPbiJk, totalBst, totalKeseluruhan }
+
+  async function hapusBansosAction(formData: FormData) {
+    'use server'
+    const id = formData.get('id') as string
+    try {
+      if (id) {
+        if (isKadus && userDusunId) {
+          const targetData = await prisma.bansos.findUnique({
+            where: { id },
+            include: { warga: { select: { dusunId: true } } }
+          })
+          if (!targetData || targetData.warga?.dusunId !== userDusunId) {
+            throw new Error('Akses ditolak!')
+          }
+        }
+        await prisma.bansos.delete({ where: { id } })
+        revalidatePath('/dashboard/bansos')
+      }
+    } catch (error: any) {
+      console.error('Gagal hapus bansos:', error)
+      throw new Error(error.message || 'Gagal menghapus data.')
+    }
+  }
+
+  return (
+    <BansosClient
+      initialData={daftarBansos}
+      initialPagination={{
+        currentPage,
+        totalPages,
+        totalItems: totalFilteredBansos,
+        pageSize: PAGE_SIZE,
+      }}
+      stats={stats}
+      isKadus={isKadus}
+      user={user}
+      hapusBansosAction={hapusBansosAction}
+    />
+  )
+}

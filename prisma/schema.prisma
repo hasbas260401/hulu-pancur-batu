@@ -1,0 +1,331 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ENUMS
+
+enum Role {
+  WARGA
+  KADUS
+  ADMIN
+}
+
+enum StatusWarga {
+  AKTIF
+  PINDAH
+  MENINGGAL
+}
+
+enum StatusAkun {
+  PENDING
+  AKTIF
+  DITOLAK
+  NONAKTIF
+}
+
+enum JenisKelamin {
+  LAKI_LAKI
+  PEREMPUAN
+}
+
+enum HubunganKeluarga {
+  KEPALA_KELUARGA
+  ISTRI
+  ANAK
+  ORANG_TUA
+  FAMILI_LAIN
+}
+
+enum StatusSurat {
+  DIAJUKAN
+  DIVERIFIKASI
+  DITOLAK
+  SELESAI
+}
+
+enum StatusBansos {
+  AKTIF
+  SELESAI
+  DICABUT
+}
+
+// WILAYAH
+
+model Dusun {
+  id        Int      @id @default(autoincrement())
+  nomor     Int      @unique              // 1 s.d. 5
+  nama      String                         // "Dusun I", dst
+  createdAt DateTime @default(now())
+
+  kartuKeluarga  KartuKeluarga[]
+  warga          Warga[]
+  users          User[]
+  pengajuanSurat PengajuanSurat[]
+  bansos         Bansos[]
+}
+
+// AUTH
+
+model User {
+  id              String       @id @default(cuid())
+  username        String       @unique // Warga: NIK | KADUS/Admin: username
+  email           String?      @unique
+  passwordHash    String
+  role            Role         @default(WARGA)
+  statusAkun      String       @default("PENDING")
+
+  dusunId         Int?
+  dusun           Dusun?       @relation(fields: [dusunId], references: [id])
+
+  wargaId         String?      @unique
+  warga           Warga?       @relation(fields: [wargaId], references: [id])
+
+  noWhatsapp      String?
+  failedLogin     Int          @default(0)
+  lockedUntil     DateTime?
+  lastLoginAt     DateTime?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  // 👇 TAMBAHKAN KOLOM INI UNTUK FITUR OTP EMAIL
+  emailOtp          String?
+  emailOtpExpiresAt DateTime?
+  isEmailVerified   Boolean   @default(false)
+
+  // 👇 TAMBAHKAN RELASI KE SESI PERANGKAT
+  sessions          UserSession[]
+
+  permissions     String[]     @default([])
+
+  verifiedById    String?
+  auditLogs       AuditLog[]
+
+  @@index([role, dusunId])
+}
+
+// KEPENDUDUKAN & WARGA
+
+model KartuKeluarga {
+  id        String   @id @default(cuid())
+  noKk      String   @unique @db.VarChar(16)
+  alamat    String
+  rt        String?
+  rw        String?
+  dusunId   Int
+  dusun     Dusun    @relation(fields: [dusunId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  anggota Warga[]
+
+  @@index([dusunId])
+}
+
+model Warga {
+  id               String          @id @default(uuid())
+  nik              String          @unique
+  nama             String
+  hubunganKeluarga String?      
+  jenisKelamin     JenisKelamin
+  tempatLahir      String?
+  tanggalLahir     DateTime
+  agama            String?
+  pekerjaan        String?
+  statusPerkawinan String?
+  statusWarga      String          @default("AKTIF") // AKTIF, MENINGGAL, PINDAH
+
+  kkId             String
+  kk               KartuKeluarga   @relation(fields: [kkId], references: [id], onDelete: Cascade)
+
+  dusunId          Int
+  dusun            Dusun           @relation(fields: [dusunId], references: [id])
+
+  user             User?
+  surat            PengajuanSurat[]
+  bansos           Bansos[]
+
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  tanggalMeninggal DateTime?
+  sebabMeninggal   String?
+  tanggalPindah    DateTime?
+  alamatTujuan     String?
+  alasanPindah     String?
+
+  // 👇 TAMBAHKAN INDEX INI UNTUK OPTIMASI PENCARIAN & FILTER
+  @@index([statusWarga, dusunId])
+  @@index([nama])
+  @@index([agama])
+  @@index([pekerjaan])
+}
+
+// SURAT OTOMATIS
+
+model TemplateSurat {
+  id              String   @id @default(cuid())
+  kode            String   @unique            // "SKU", "SKTM", "DOMISILI"
+  nama            String                      // "Surat Keterangan Usaha"
+  kodeKlasifikasi String   @default("470")   
+  filePath        String                      // Lokasi file .docx template
+  placeholders    String[]                    
+  aktif           Boolean  @default(true)
+  versi           Int      @default(1)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  pengajuan PengajuanSurat[]
+}
+
+model PengajuanSurat {
+  id             String      @id @default(cuid())
+  status         StatusSurat @default(DIAJUKAN)
+  keperluan      String
+  dataTambahan   Json?       // Menyimpan data dinamis (jenis usaha, dll)
+  catatan        String?     // Catatan penolakan dari KADUS
+
+  templateId     String?     // Beri tanda ? agar boleh null saat template dihapus
+  template       TemplateSurat? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  
+  wargaId        String
+  warga          Warga       @relation(fields: [wargaId], references: [id], onDelete: Cascade)
+  
+  dusunId        Int         // Tetap ikuti tipe data asli Anda (Int atau sesuaikan dengan ID Dusun)
+  dusun          Dusun       @relation(fields: [dusunId], references: [id])
+
+  nomorSurat     String?     @unique
+  filePath       String?     // File hasil generate
+  diprosesOlehId String?     
+  diprosesAt     DateTime?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  @@index([dusunId, status])
+  @@index([wargaId])
+}
+
+model SuratCounter {
+  tahun Int @id
+  last  Int @default(0)
+}
+
+// BANTUAN & KEUANGAN
+
+model Bansos {
+  id       String       @id @default(cuid())
+  program  String                          // "PKH", "BLT-DD", "BPNT"
+  periode  String                          // "2026", "2026-TW3"
+  nominal  Decimal?     @db.Decimal(14, 2)
+  status   StatusBansos @default(AKTIF)
+  catatan  String?
+
+  wargaId  String
+  warga    Warga   @relation(fields: [wargaId], references: [id])
+  dusunId  Int
+  dusun    Dusun   @relation(fields: [dusunId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@unique([wargaId, program, periode])
+  @@index([program, periode])
+}
+
+model DanaDesa {
+  id        String   @id @default(cuid())
+  tahun     Int
+  jenis     String                          // "PENDAPATAN" | "BELANJA" | "PEMBIAYAAN"
+  kategori  String                          // "Bidang Pembangunan", "ADD", "DD"...
+  uraian    String
+  anggaran  Decimal  @db.Decimal(16, 2)
+  realisasi Decimal  @db.Decimal(16, 2) @default(0)
+  sumber    String?                         
+  createdAt DateTime @default(now())
+
+  @@index([tahun, jenis])
+}
+
+// KONTEN PUBLIK
+
+model Kegiatan {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  judul       String
+  ringkasan   String
+  isi         String
+  gambarUrl   String?
+  kategori    String   @default("BERITA")   
+  published   Boolean  @default(false)
+  publishedAt DateTime?
+  penulisId   String?
+  createdAt DateTime @default(now())
+
+  @@index([published, publishedAt])
+}
+
+// AUDIT
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  aksi      String                         
+  entitas   String
+  entitasId String?
+  detail    Json?
+  ip        String?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model WebSettings {
+  id              String   @id @default(cuid())
+  namaDesa        String   @default("Desa Hulu Pancur Batu")
+  sloganDesa      String   @default("Sistem Informasi Desa")
+  logoDesa        String?
+  heroTitle       String   @default("Transparan, Akuntabel, & Melayani Sepenuh Hati.")
+  heroDescription String   @default("Website resmi administrasi kependudukan dan transparansi penyaluran bantuan sosial Desa Hulu Pancur Batu untuk mewujudkan tata kelola pemerintahan desa yang modern.")
+  namaKades       String   @default("Kepala Desa Hulu Pancur Batu")
+  periodeKades    String   @default("Periode 2023 - 2029")
+  fotoKades       String?
+  visiDesa        String   @default("Terwujudnya Desa Hulu Pancur Batu yang Mandiri, Religius, Sejahtera, Transparan, dan Berbasis Teknologi Informasi dalam Pelayanan Publik.")
+  misiDesa        String   @default("Meningkatkan kualitas pelayanan administrasi kependudukan yang cepat, transparan, dan bebas pungutan liar.\nMengoptimalkan penyaluran bantuan sosial agar tepat sasaran kepada warga yang berhak secara adil.\nMemajukan infrastruktur desa serta menggerakkan ekonomi kerakyatan berbasis potensi lokal.")
+  youtubeUrl      String   @default("https://www.youtube.com/embed/VUZlZm5V9R8")
+  updatedAt       DateTime @updatedAt
+}
+model UserSession {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token        String   @unique // Token unik sesi / jti
+  userAgent    String?  // Nama browser / perangkat (misal: Mozilla, Chrome, Windows)
+  ipAddress    String?  // Alamat IP perangkat
+  createdAt    DateTime @default(now())
+  expiresAt    DateTime
+
+  @@index([userId])
+}
+
+
+// API KEY INTEGRASI DATA (untuk endpoint /api/external/*)
+
+enum ApiKeyJenis {
+  WARGA
+  BANSOS
+}
+
+model ApiKey {
+  id          String      @id @default(cuid())
+  jenis       ApiKeyJenis @unique          // satu key per jenis data
+  keyHash     String      @unique          // SHA-256 dari key asli (key asli tidak disimpan)
+  keyPrefix   String                       // awal key, hanya untuk ditampilkan di UI
+  isActive    Boolean     @default(true)
+  createdById String?                      // id admin yang terakhir generate
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  lastUsedAt  DateTime?
+}
