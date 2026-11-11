@@ -1,771 +1,775 @@
+"use client";
 
-import type { Metadata } from 'next'
-import { PrismaClient } from '@prisma/client'
-import { Suspense } from 'react'
-import Navbar from '@/components/Navbar'
-import CounterCard from '@/components/CounterCard'
+import { useEffect, useState, type ReactNode } from "react";
 import {
-  Building2,
-  Target,
-  Rocket,
-  UserRound,
-  MapPin,
-  ShieldCheck,
-  Video,
+  MotionConfig,
+  motion,
+  type Variants,
+} from "framer-motion";
+import {
   ArrowRight,
-  Users,
-  FileText,
+  ArrowUpRight,
+  Calendar,
+  Clock,
+  FileCheck2,
+  HandHeart,
   Home,
-  Info,
-  ClipboardList,
   Landmark,
-  ExternalLink,
-} from 'lucide-react'
+  MapPin,
+  Mail,
+  Megaphone,
+  MessageSquareWarning,
+  Phone,
+  Sprout,
+  Trees,
+  Users,
+  Wallet,
+  type LucideIcon,
+} from "lucide-react";
 
-const prisma = new PrismaClient()
+import Navbar from "@/components/Navbar";
 
-export async function generateMetadata(): Promise<Metadata> {
-  const setting = await prisma.webSettings.findFirst().catch(() => null)
+/* -------------------------------------------------------------------------- */
+/*  Font                                                                      */
+/*  Judul memakai --font-display (Fraunces, didaftarkan di layout.tsx).       */
+/*  Teks isi memakai Geist Sans yang sudah ada di layout.                     */
+/* -------------------------------------------------------------------------- */
 
-  return {
-    title: `${setting?.namaDesa || 'Desa Hulu Pancur Batu'} | Sistem Informasi Desa`,
-    description:
-      setting?.heroDescription ||
-      'Portal resmi administrasi Desa Hulu Pancur Batu.',
-    icons: {
-      icon: setting?.logoDesa || '/favicon.ico',
-    },
-  }
+const HEADING = "font-[family-name:var(--font-display)] tracking-tight";
+
+/* -------------------------------------------------------------------------- */
+/*  Data (ganti dengan data desa Anda atau ambil dari CMS/API)                */
+/* -------------------------------------------------------------------------- */
+
+const VILLAGE = {
+  name: "Desa Hulu Pancur Batu",
+  region: "Kec. Pancur Batu, Kab. Deli Serdang",
+  tagline: "Desa yang terbuka untuk warganya.",
+  address: "Kantor Kepala Desa Hulu, Kec. Pancur Batu, Kab. Deli Serdang, Sumatera Utara",
+  phone: "0812-0000-0000",
+  email: "info@hulupancurbatu.desa.id",
+  emergency: [
+    { label: "Kepala Desa", number: "0812-0000-0001" },
+    { label: "Linmas / Keamanan", number: "0812-0000-0002" },
+    { label: "Ambulans Desa", number: "0812-0000-0003" },
+  ],
+  hours: [
+    { day: "Senin sampai Kamis", time: "08.00 - 15.00" },
+    { day: "Jumat", time: "08.00 - 11.30" },
+    { day: "Sabtu dan Minggu", time: "Tutup" },
+  ],
+};
+
+/*
+  Bentuknya sama dengan prop `setting` di Navbar.
+  Jika data ini dari database, ambil di server component lalu kirim sebagai prop.
+*/
+const SETTING = {
+  namaDesa: VILLAGE.name,
+  sloganDesa: VILLAGE.tagline,
+  logoDesa: "/logo-desa.png" as string | null,
+};
+
+const QUICK_FACTS: { icon: LucideIcon; label: string; value: string }[] = [
+  { icon: Trees, label: "Luas wilayah", value: "12,4 km²" },
+  { icon: Users, label: "Jumlah penduduk", value: "4.328 jiwa" },
+  { icon: Home, label: "Jumlah dusun", value: "5 dusun" },
+];
+
+const SERVICES: {
+  icon: LucideIcon;
+  title: string;
+  desc: string;
+  cta: string;
+}[] = [
+  {
+    icon: FileCheck2,
+    title: "Surat keterangan online",
+    desc: "Ajukan surat domisili, usaha, atau tidak mampu dari rumah. Ambil hasilnya di kantor desa.",
+    cta: "Ajukan surat",
+  },
+  {
+    icon: MessageSquareWarning,
+    title: "Lapor aduan",
+    desc: "Sampaikan jalan rusak, lampu mati, atau masalah lingkungan. Anda bisa memantau tindak lanjutnya.",
+    cta: "Buat laporan",
+  },
+  {
+    icon: HandHeart,
+    title: "Program bantuan",
+    desc: "Cek apakah Anda terdaftar sebagai penerima BLT, PKH, atau bantuan desa lainnya.",
+    cta: "Cek penerima",
+  },
+  {
+    icon: Landmark,
+    title: "Transparansi dana",
+    desc: "Lihat rencana dan realisasi APBDes, lengkap dengan proyek yang sedang berjalan.",
+    cta: "Lihat anggaran",
+  },
+];
+
+type NewsCategory = "Pengumuman" | "Kegiatan" | "Pembangunan";
+
+const NEWS: {
+  category: NewsCategory;
+  date: string;
+  title: string;
+  excerpt: string;
+  icon: LucideIcon;
+}[] = [
+  {
+    category: "Pengumuman",
+    date: "10 November 2026",
+    title: "Pembayaran PBB-P2 dibuka sampai 30 November",
+    excerpt:
+      "Warga dapat membayar di kantor desa setiap jam layanan. Bawa SPPT tahun lalu atau tunjukkan NOP dari ponsel.",
+    icon: Megaphone,
+  },
+  {
+    category: "Kegiatan",
+    date: "7 November 2026",
+    title: "Gotong royong bersihkan parit di Dusun III dan IV",
+    excerpt:
+      "Sekitar 120 warga ikut membersihkan 2,5 km parit menjelang musim hujan. Kegiatan berikutnya dijadwalkan di Dusun I.",
+    icon: Sprout,
+  },
+  {
+    category: "Pembangunan",
+    date: "3 November 2026",
+    title: "Pengaspalan jalan usaha tani tahap dua mulai dikerjakan",
+    excerpt:
+      "Proyek sepanjang 1,8 km ini dibiayai Dana Desa dan ditargetkan selesai akhir Desember.",
+    icon: Landmark,
+  },
+];
+
+const CATEGORY_STYLE: Record<NewsCategory, string> = {
+  Pengumuman: "bg-amber-50 text-amber-800 ring-amber-200",
+  Kegiatan: "bg-emerald-50 text-emerald-800 ring-emerald-200",
+  Pembangunan: "bg-slate-100 text-slate-700 ring-slate-200",
+};
+
+const BUDGET_SUMMARY = [
+  { label: "Pendapatan", target: "Rp 1,92 M", realized: "Rp 1,41 M", pct: 73 },
+  { label: "Belanja", target: "Rp 1,92 M", realized: "Rp 1,18 M", pct: 61 },
+];
+
+const BUDGET_SPLIT = [
+  { label: "Pembangunan desa", pct: 38, amount: "Rp 730 jt" },
+  { label: "Penyelenggaraan pemerintahan", pct: 22, amount: "Rp 422 jt" },
+  { label: "Pemberdayaan masyarakat", pct: 18, amount: "Rp 346 jt" },
+  { label: "Pembinaan kemasyarakatan", pct: 14, amount: "Rp 269 jt" },
+  { label: "Penanggulangan bencana dan darurat", pct: 8, amount: "Rp 153 jt" },
+];
+
+const POPULATION = {
+  total: "4.328",
+  households: "1.214",
+  male: 2151,
+  female: 2177,
+};
+
+/* -------------------------------------------------------------------------- */
+/*  Util kecil                                                                */
+/* -------------------------------------------------------------------------- */
+
+/*
+  Tahun dihitung di browser (useEffect), bukan saat render, supaya tidak
+  memicu error "new Date() in a Client Component" di Next.js 16.
+  Nilai awal dipakai saat prerender, lalu diganti tahun sebenarnya.
+*/
+function CurrentYear({ fallback = 2026 }: { fallback?: number }) {
+  const [year, setYear] = useState(fallback);
+  useEffect(() => {
+    setYear(new Date().getFullYear());
+  }, []);
+  return <>{year}</>;
 }
 
-export default function LandingPage() {
+const FOCUS =
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 focus-visible:ring-offset-white";
+
+function Reveal({
+  children,
+  delay = 0,
+  className,
+}: {
+  children: ReactNode;
+  delay?: number;
+  className?: string;
+}) {
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen flex items-center justify-center bg-white text-slate-600">
-          Memuat halaman desa...
-        </div>
-      }
+    <motion.div
+      className={className}
+      initial={{ opacity: 0, y: 24 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-80px" }}
+      transition={{ duration: 0.6, delay, ease: [0.22, 1, 0.36, 1] }}
     >
-      <LandingContent />
-    </Suspense>
-  )
+      {children}
+    </motion.div>
+  );
 }
 
-async function LandingContent() {
-  const [totalWarga, totalKK, totalBansos] = await Promise.all([
-    prisma.warga.count(),
-    prisma.kartuKeluarga.count(),
-    prisma.bansos.count({ where: { status: 'AKTIF' } }),
-  ])
+function SectionHeading({
+  title,
+  description,
+  action,
+}: {
+  title: string;
+  description: string;
+  action?: { label: string; href: string };
+}) {
+  return (
+    <Reveal className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div className="max-w-xl">
+        <h2 className={`${HEADING} text-3xl font-semibold text-slate-900 sm:text-4xl`}>
+          {title}
+        </h2>
+        <p className="mt-3 text-base leading-relaxed text-slate-600">{description}</p>
+      </div>
+      {action && (
+        <a
+          href={action.href}
+          className={`group inline-flex shrink-0 items-center gap-1.5 text-sm font-semibold text-emerald-700 hover:text-emerald-800 ${FOCUS} rounded-md`}
+        >
+          {action.label}
+          <ArrowUpRight className="h-4 w-4 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+        </a>
+      )}
+    </Reveal>
+  );
+}
 
-  let setting = await prisma.webSettings.findFirst()
+/* -------------------------------------------------------------------------- */
+/*  Notice bar                                                                */
+/* -------------------------------------------------------------------------- */
 
-  if (!setting) {
-    setting = {
-      id: 'default',
-      namaDesa: 'Desa Hulu Pancur Batu',
-      sloganDesa: 'Sistem Informasi Desa',
-      logoDesa: null,
-      heroTitle: 'Membangun Desa, Melayani Masyarakat.',
-      heroDescription:
-        'Selamat datang di portal resmi Desa Hulu Pancur Batu. Dapatkan informasi pemerintahan, pelayanan administrasi, dan transparansi pembangunan desa.',
-      namaKades: 'Kepala Desa Hulu Pancur Batu',
-      periodeKades: 'Periode 2023 - 2029',
-      fotoKades: null,
-      visiDesa:
-        'Terwujudnya Desa Hulu Pancur Batu yang Mandiri, Religius, Sejahtera, Transparan, dan Berbasis Teknologi Informasi dalam Pelayanan Publik.',
-      misiDesa:
-        'Meningkatkan kualitas pelayanan administrasi kependudukan yang cepat, transparan, dan bebas pungutan liar.\nMengoptimalkan penyaluran bantuan sosial agar tepat sasaran kepada warga yang berhak secara adil.\nMemajukan infrastruktur desa serta menggerakkan ekonomi kerakyatan berbasis potensi lokal.',
-      youtubeUrl: 'https://www.youtube.com/embed/VUZlZm5V9R8',
-      updatedAt: new Date(),
-    }
-  }
+function NoticeBar() {
+  return (
+    <div className="border-b border-amber-200/80 bg-amber-50">
+      <div className="mx-auto flex max-w-6xl items-center gap-2 px-4 py-2 text-sm text-amber-900 sm:px-6">
+        <Megaphone className="h-4 w-4 shrink-0" aria-hidden />
+        <p className="truncate">
+          <span className="font-semibold">Penting:</span> PBB-P2 dibuka sampai 30
+          November 2026.
+        </p>
+        <a
+          href="#berita"
+          className={`ml-auto hidden shrink-0 font-semibold underline underline-offset-4 hover:text-amber-950 sm:inline ${FOCUS} rounded`}
+        >
+          Selengkapnya
+        </a>
+      </div>
+    </div>
+  );
+}
 
-  const listMisi = setting.misiDesa
-    ? setting.misiDesa.split('\n').filter((m) => m.trim() !== '')
-    : []
+/* -------------------------------------------------------------------------- */
+/*  Hero                                                                      */
+/* -------------------------------------------------------------------------- */
 
-  const daftarBansosPublik = await prisma.bansos.findMany({
-    where: { status: 'AKTIF' },
-    take: 5,
-    orderBy: { createdAt: 'desc' },
-    include: {
-      warga: {
-        include: { dusun: true },
-      },
-    },
-  })
+const heroContainer: Variants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.1, delayChildren: 0.05 } },
+};
+const heroItem: Variants = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] } },
+};
+
+function Hero() {
+  return (
+    <section id="beranda" className="scroll-mt-24 bg-slate-50">
+      <motion.div
+        variants={heroContainer}
+        initial="hidden"
+        animate="show"
+        className="mx-auto grid max-w-6xl gap-10 px-4 py-14 sm:px-6 sm:py-20 lg:grid-cols-[1.15fr_0.85fr] lg:items-center lg:gap-14 lg:py-24"
+      >
+        <div>
+          <motion.p
+            variants={heroItem}
+            className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white px-3 py-1 text-sm font-medium text-emerald-800 shadow-sm"
+          >
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-60 motion-reduce:hidden" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-600" />
+            </span>
+            Website resmi {VILLAGE.name}
+          </motion.p>
+
+          <motion.h1
+            variants={heroItem}
+            className={`${HEADING} mt-5 text-4xl font-semibold leading-[1.1] text-slate-900 sm:text-5xl lg:text-6xl`}
+          >
+            Urusan desa, lebih dekat dari rumah Anda.
+          </motion.h1>
+
+          <motion.p
+            variants={heroItem}
+            className="mt-5 max-w-xl text-lg leading-relaxed text-slate-600"
+          >
+            {VILLAGE.tagline} Ajukan surat, sampaikan aduan, dan pantau
+            penggunaan dana desa tanpa harus antre di kantor.
+          </motion.p>
+
+          <motion.div variants={heroItem} className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <a
+              href="#layanan"
+              className={`group inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-700 px-6 py-3.5 text-base font-semibold text-white shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:bg-emerald-800 hover:shadow-lg active:translate-y-0 active:scale-[0.98] ${FOCUS}`}
+            >
+              Buka layanan publik
+              <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" aria-hidden />
+            </a>
+            <a
+              href="#berita"
+              className={`group inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-6 py-3.5 text-base font-semibold text-slate-800 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-emerald-300 hover:text-emerald-800 hover:shadow-md active:translate-y-0 active:scale-[0.98] ${FOCUS}`}
+            >
+              <MapPin className="h-4 w-4 transition-transform duration-300 group-hover:scale-110" aria-hidden />
+              Jelajahi desa
+            </a>
+          </motion.div>
+        </div>
+
+        {/* Papan informasi desa */}
+        <motion.aside
+          variants={heroItem}
+          aria-label="Informasi singkat desa"
+          className="rounded-2xl border border-slate-200/80 bg-white p-2 shadow-md"
+        >
+          <div className="flex items-center justify-between px-4 pb-3 pt-4">
+            <h2 className={`${HEADING} text-lg font-semibold text-slate-900`}>
+              Sekilas {VILLAGE.name}
+            </h2>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-800 ring-1 ring-inset ring-amber-200">
+              <Clock className="h-3.5 w-3.5" aria-hidden />
+              Kantor buka hari ini
+            </span>
+          </div>
+
+          <dl className="divide-y divide-slate-100">
+            {QUICK_FACTS.map(({ icon: Icon, label, value }) => (
+              <div
+                key={label}
+                className="group flex items-center gap-4 rounded-xl px-4 py-4 transition-colors duration-300 hover:bg-emerald-50/60"
+              >
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-100 transition-all duration-300 group-hover:scale-110 group-hover:bg-emerald-600 group-hover:text-white">
+                  <Icon className="h-5 w-5" aria-hidden />
+                </span>
+                <div>
+                  <dt className="text-sm text-slate-500">{label}</dt>
+                  <dd className={`${HEADING} text-xl font-semibold text-slate-900`}>
+                    {value}
+                  </dd>
+                </div>
+              </div>
+            ))}
+          </dl>
+
+          <p className="mx-2 mb-2 mt-1 rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
+            Jam layanan: Senin sampai Kamis 08.00 - 15.00, Jumat 08.00 - 11.30.
+          </p>
+        </motion.aside>
+      </motion.div>
+    </section>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Layanan                                                                   */
+/* -------------------------------------------------------------------------- */
+
+function Services() {
+  return (
+    <section id="layanan" className="scroll-mt-24 bg-white py-16 sm:py-24">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6">
+        <SectionHeading
+          title="Layanan mandiri untuk warga"
+          description="Empat layanan yang paling sering dipakai. Semuanya bisa diakses dari ponsel, kapan saja."
+        />
+
+        <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          {SERVICES.map(({ icon: Icon, title, desc, cta }, i) => (
+            <Reveal key={title} delay={i * 0.08} className="h-full">
+              <a
+                href="#"
+                className={`group flex h-full flex-col rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-emerald-200 hover:shadow-lg ${FOCUS}`}
+              >
+                <span className="grid h-12 w-12 place-items-center rounded-xl bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-100 transition-all duration-300 group-hover:rotate-3 group-hover:scale-110 group-hover:bg-emerald-600 group-hover:text-white">
+                  <Icon className="h-6 w-6" aria-hidden />
+                </span>
+                <h3 className={`${HEADING} mt-5 text-lg font-semibold text-slate-900`}>
+                  {title}
+                </h3>
+                <p className="mt-2 flex-1 text-sm leading-relaxed text-slate-600">
+                  {desc}
+                </p>
+                <span className="mt-5 inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-700">
+                  {cta}
+                  <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" aria-hidden />
+                </span>
+              </a>
+            </Reveal>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Berita & pengumuman                                                       */
+/* -------------------------------------------------------------------------- */
+
+function NewsCard({ item }: { item: (typeof NEWS)[number] }) {
+  const Icon = item.icon;
+  return (
+    <article className="group flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
+      {/*
+        Placeholder gambar. Ganti dengan next/image, contoh:
+        <Image src={item.image} alt="" fill className="object-cover" sizes="(min-width:1024px) 33vw, 100vw" />
+      */}
+      <div className="relative aspect-video overflow-hidden bg-slate-100">
+        <div className="absolute inset-0 grid place-items-center text-slate-300 transition-transform duration-500 group-hover:scale-110">
+          <Icon className="h-14 w-14" strokeWidth={1.25} aria-hidden />
+        </div>
+        <span
+          className={`absolute left-3 top-3 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${CATEGORY_STYLE[item.category]}`}
+        >
+          {item.category}
+        </span>
+      </div>
+
+      <div className="flex flex-1 flex-col p-5">
+        <p className="flex items-center gap-1.5 text-sm text-slate-500">
+          <Calendar className="h-4 w-4" aria-hidden />
+          <time>{item.date}</time>
+        </p>
+        <h3 className={`${HEADING} mt-2 text-lg font-semibold leading-snug text-slate-900 transition-colors duration-300 group-hover:text-emerald-800`}>
+          {item.title}
+        </h3>
+        <p className="mt-2 flex-1 text-sm leading-relaxed text-slate-600">
+          {item.excerpt}
+        </p>
+        <a
+          href="#"
+          className={`mt-4 inline-flex items-center gap-1.5 self-start rounded-md text-sm font-semibold text-emerald-700 hover:text-emerald-800 ${FOCUS}`}
+        >
+          Baca selengkapnya
+          <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" aria-hidden />
+        </a>
+      </div>
+    </article>
+  );
+}
+
+function News() {
+  return (
+    <section id="berita" className="scroll-mt-24 bg-slate-50 py-16 sm:py-24">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6">
+        <SectionHeading
+          title="Berita dan pengumuman terbaru"
+          description="Kabar dari balai desa, jadwal kegiatan, dan perkembangan pembangunan."
+          action={{ label: "Lihat semua berita", href: "#" }}
+        />
+
+        <div className="mt-10 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {NEWS.map((item, i) => (
+            <Reveal key={item.title} delay={i * 0.08} className="h-full">
+              <NewsCard item={item} />
+            </Reveal>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Statistik & transparansi anggaran                                         */
+/* -------------------------------------------------------------------------- */
+
+function ProgressBar({ pct, tone = "emerald" }: { pct: number; tone?: "emerald" | "teal" }) {
+  return (
+    <div
+      className="h-2.5 w-full overflow-hidden rounded-full bg-slate-100"
+      role="progressbar"
+      aria-valuenow={pct}
+      aria-valuemin={0}
+      aria-valuemax={100}
+    >
+      <motion.div
+        className={`h-full rounded-full ${tone === "emerald" ? "bg-emerald-600" : "bg-teal-600"}`}
+        initial={{ width: 0 }}
+        whileInView={{ width: `${pct}%` }}
+        viewport={{ once: true }}
+        transition={{ duration: 1, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
+      />
+    </div>
+  );
+}
+
+function Transparency() {
+  const maleShare = Math.round(
+    (POPULATION.male / (POPULATION.male + POPULATION.female)) * 100
+  );
 
   return (
-    <main className="min-h-screen bg-white text-slate-800 overflow-x-clip">
-
-      <Navbar setting={setting} />
-
-      {/* HERO */}
-      <section
-        id="beranda"
-        className="scroll-mt-20 pt-32 pb-20 lg:pt-40 lg:pb-28 bg-[#F4F7FB]"
-      >
-        <div className="max-w-7xl mx-auto px-5 lg:px-8">
-
-          <div className="grid lg:grid-cols-12 gap-12 items-center">
-
-            <div className="lg:col-span-7">
-
-              <div className="flex items-center gap-2 text-blue-700 text-sm font-semibold mb-6">
-                <span className="w-8 h-[2px] bg-blue-700" />
-                PEMERINTAH DESA
-              </div>
-
-              <h2 className="text-4xl sm:text-5xl lg:text-[58px] font-bold text-[#102B50] leading-[1.12] tracking-tight">
-                {setting.heroTitle}
-              </h2>
-
-              <p className="mt-6 text-base sm:text-lg text-slate-600 leading-relaxed max-w-2xl">
-                {setting.heroDescription}
-              </p>
-
-              <div className="flex flex-wrap gap-3 mt-9">
-
-                <a
-                  href="#transparansi"
-                  className="inline-flex items-center gap-2 bg-[#2563B8] hover:bg-blue-800 text-white px-6 py-3.5 rounded-lg font-semibold text-sm transition"
-                >
-                  Lihat Transparansi
-                  <ArrowRight size={17} />
-                </a>
-
-                <a
-                  href="#profil"
-                  className="inline-flex items-center gap-2 border border-slate-300 bg-white hover:bg-slate-50 text-[#102B50] px-6 py-3.5 rounded-lg font-semibold text-sm transition"
-                >
-                  Profil Desa
-                </a>
-
-              </div>
-
-              <div className="mt-12 pt-8 border-t border-slate-200">
-                <p className="text-xs text-slate-500 font-medium">
-                  MELAYANI MASYARAKAT DENGAN TRANSPARAN DAN PROFESIONAL
-                </p>
-              </div>
-
-            </div>
-
-            {/* STATISTIK */}
-            <div className="lg:col-span-5">
-
-              <div className="bg-[#102B50] rounded-2xl p-7 sm:p-9 text-white">
-
-                <div className="mb-7">
-                  <p className="text-blue-200 text-sm font-medium">
-                    Data Administrasi
-                  </p>
-                  <h3 className="text-2xl font-bold mt-1">
-                    Statistik Desa
-                  </h3>
-                  <p className="text-sm text-slate-300 mt-2">
-                    Informasi ringkas kependudukan dan bantuan sosial.
-                  </p>
-                </div>
-
-                <div className="divide-y divide-white/15">
-
-                  <div className="py-5 first:pt-0">
-                    <CounterCard
-                      endValue={totalWarga}
-                      label="Total Penduduk Terdaftar"
-                      colorClass="text-white"
-                    />
-                  </div>
-
-                  <div className="py-5">
-                    <CounterCard
-                      endValue={totalKK}
-                      label="Kartu Keluarga"
-                      colorClass="text-white"
-                    />
-                  </div>
-
-                  <div className="py-5 last:pb-0">
-                    <CounterCard
-                      endValue={totalBansos}
-                      label="Bantuan Sosial Aktif"
-                      colorClass="text-white"
-                    />
-                  </div>
-
-                </div>
-
-              </div>
-
-            </div>
-
-          </div>
-        </div>
-      </section>
-
-      {/* PROFIL DESA */}
-      <section id="profil" className="scroll-mt-24 py-20 lg:py-24">
-        <div className="max-w-7xl mx-auto px-5 lg:px-8">
-
-          <div className="max-w-2xl mb-14">
-            <p className="text-sm font-bold text-blue-700 tracking-wider uppercase">
-              Tentang Kami
-            </p>
-
-            <h2 className="text-3xl sm:text-4xl font-bold text-[#102B50] mt-3">
-              Mengenal Desa Kami Lebih Dekat
-            </h2>
-
-            <p className="text-slate-500 mt-4 leading-relaxed">
-              Mengenal kepemimpinan, visi, dan arah pembangunan{' '}
-              {setting.namaDesa}.
-            </p>
-          </div>
-
-          <div className="grid lg:grid-cols-12 gap-12 items-start">
-
-            {/* KEPALA DESA */}
-            <div className="lg:col-span-4">
-
-              <div className="bg-[#F4F7FB] rounded-2xl overflow-hidden border border-slate-200">
-
-                <div className="aspect-[4/5] bg-[#E5EDF6] flex items-center justify-center">
-
-                  {setting.fotoKades ? (
-                    <img
-                      src={setting.fotoKades}
-                      alt={setting.namaKades}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="text-center text-blue-800">
-                      <UserRound size={76} strokeWidth={1.2} />
-                      <p className="mt-3 text-sm font-semibold">
-                        Foto Kepala Desa
-                      </p>
-                    </div>
-                  )}
-
-                </div>
-
-                <div className="p-6">
-                  <p className="text-xs text-blue-700 font-bold uppercase tracking-wider">
-                    Kepala Desa
-                  </p>
-
-                  <h3 className="text-xl font-bold text-[#102B50] mt-2">
-                    {setting.namaKades}
-                  </h3>
-
-                  <p className="text-sm text-slate-500 mt-1">
-                    {setting.periodeKades}
-                  </p>
-                </div>
-
-              </div>
-
-            </div>
-
-            {/* VISI MISI */}
-            <div className="lg:col-span-8 space-y-8">
-
-              <div>
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 bg-blue-50 text-blue-700 rounded-lg flex items-center justify-center">
-                    <Target size={21} />
-                  </div>
-
-                  <h3 className="text-xl font-bold text-[#102B50]">
-                    Visi Desa
-                  </h3>
-                </div>
-
-                <div className="border-l-4 border-blue-700 pl-6 py-2">
-                  <p className="text-slate-600 leading-relaxed text-base">
-                    {setting.visiDesa}
-                  </p>
-                </div>
-              </div>
-
-              <div className="border-t border-slate-200 pt-8">
-
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-10 h-10 bg-blue-50 text-blue-700 rounded-lg flex items-center justify-center">
-                    <Rocket size={21} />
-                  </div>
-
-                  <h3 className="text-xl font-bold text-[#102B50]">
-                    Misi Desa
-                  </h3>
-                </div>
-
-                <div className="space-y-5">
-                  {listMisi.map((misi, index) => (
-                    <div key={index} className="flex gap-4">
-                      <span className="text-sm font-bold text-blue-700 pt-0.5">
-                        0{index + 1}
-                      </span>
-
-                      <p className="text-slate-600 leading-relaxed text-sm sm:text-base">
-                        {misi}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-
-              </div>
-
-            </div>
-
-          </div>
-        </div>
-      </section>
-
-      {/* TRANSPARANSI BANSOS */}
-      <section
-        id="transparansi"
-        className="scroll-mt-24 py-20 bg-[#F4F7FB]"
-      >
-        <div className="max-w-7xl mx-auto px-5 lg:px-8">
-
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-5 mb-10">
-
-            <div>
-              <p className="text-sm font-bold text-blue-700 uppercase tracking-wider">
-                Keterbukaan Informasi
-              </p>
-
-              <h2 className="text-3xl font-bold text-[#102B50] mt-3">
-                Transparansi Bantuan Sosial
-              </h2>
-
-              <p className="text-sm text-slate-500 mt-3 max-w-xl">
-                Informasi penerima bantuan sosial aktif yang tercatat dalam administrasi desa.
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2 text-sm text-blue-700 font-semibold">
-              <ShieldCheck size={19} />
-              Data bantuan aktif
-            </div>
-
-          </div>
-
-          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-
-            {daftarBansosPublik.length === 0 ? (
-              <div className="py-16 text-center">
-                <FileText className="mx-auto text-slate-300" size={36} />
-                <p className="text-sm text-slate-500 mt-4">
-                  Belum ada data bantuan sosial.
-                </p>
-              </div>
-            ) : (
-              <>
-                {/* MOBILE */}
-                <div className="md:hidden divide-y divide-slate-100">
-                  {daftarBansosPublik.map((b) => (
-                    <div key={b.id} className="p-5 space-y-3">
-
-                      <div>
-                        <p className="font-semibold text-[#102B50]">
-                          {b.warga?.nama || 'Warga Terdaftar'}
-                        </p>
-
-                        <p className="text-xs text-slate-500 flex items-center gap-1 mt-1">
-                          <MapPin size={13} />
-                          {b.warga?.dusun?.nama || setting.namaDesa}
-                        </p>
-                      </div>
-
-                      <div className="flex justify-between gap-3 text-sm">
-                        <span className="text-blue-700 font-semibold">
-                          {b.program}
-                        </span>
-
-                        <span className="text-slate-500">
-                          {b.periode || '-'}
-                        </span>
-                      </div>
-
-                    </div>
-                  ))}
-                </div>
-
-                {/* DESKTOP */}
-                <div className="hidden md:block overflow-x-auto">
-                  <table className="w-full text-left text-sm">
-
-                    <thead className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
-                      <tr>
-                        <th className="px-6 py-5 font-semibold">Nama Warga</th>
-                        <th className="px-6 py-5 font-semibold">Dusun</th>
-                        <th className="px-6 py-5 font-semibold">Program</th>
-                        <th className="px-6 py-5 font-semibold">Periode</th>
-                        <th className="px-6 py-5 font-semibold">Status</th>
-                      </tr>
-                    </thead>
-
-                    <tbody className="divide-y divide-slate-100">
-                      {daftarBansosPublik.map((b) => (
-                        <tr key={b.id} className="hover:bg-blue-50/40 transition-colors">
-
-                          <td className="px-6 py-5 font-semibold text-[#102B50]">
-                            {b.warga?.nama || 'Warga Terdaftar'}
-                          </td>
-
-                          <td className="px-6 py-5 text-slate-600">
-                            {b.warga?.dusun?.nama || setting.namaDesa}
-                          </td>
-
-                          <td className="px-6 py-5 text-blue-700 font-medium">
-                            {b.program}
-                          </td>
-
-                          <td className="px-6 py-5 text-slate-600">
-                            {b.periode || '-'}
-                          </td>
-
-                          <td className="px-6 py-5">
-                            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700">
-                              <ShieldCheck size={15} />
-                              {b.status}
-                            </span>
-                          </td>
-
-                        </tr>
-                      ))}
-                    </tbody>
-
-                  </table>
-                </div>
-              </>
-            )}
-
-          </div>
-
-        </div>
-      </section>
-
-      {/* VIDEO KEGIATAN */}
-      <section id="kegiatan" className="scroll-mt-24 py-20">
-        <div className="max-w-7xl mx-auto px-5 lg:px-8">
-
-          <div className="max-w-2xl mb-12">
-            <p className="text-sm font-bold text-blue-700 uppercase tracking-wider">
-              Dokumentasi Desa
-            </p>
-
-            <h2 className="text-3xl font-bold text-[#102B50] mt-3">
-              Kegiatan dan Informasi Desa
-            </h2>
-
-            <p className="text-slate-500 text-sm mt-4 leading-relaxed">
-              Dokumentasi kegiatan, pembangunan, dan perkembangan Desa {setting.namaDesa}.
-            </p>
-          </div>
-
-          <div className="grid lg:grid-cols-12 gap-10 items-center">
-
-            <div className="lg:col-span-7">
-              <div className="aspect-video rounded-xl overflow-hidden bg-slate-100 border border-slate-200">
-                <iframe
-                  suppressHydrationWarning
-                  className="w-full h-full"
-                  src={setting.youtubeUrl}
-                  title={`Video Profil ${setting.namaDesa}`}
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                />
-              </div>
-            </div>
-
-            <div className="lg:col-span-5 space-y-7">
-
-              <div>
-                <div className="flex items-center gap-3 mb-3">
-                  <Video size={21} className="text-blue-700" />
-                  <h3 className="font-bold text-[#102B50]">
-                    Dokumentasi Kegiatan
-                  </h3>
-                </div>
-
-                <p className="text-sm text-slate-500 leading-relaxed">
-                  Melihat kegiatan masyarakat, pembangunan, dan berbagai aktivitas pemerintahan desa.
-                </p>
-              </div>
-
-              <div className="border-t border-slate-200 pt-7">
-                <div className="flex items-center gap-3 mb-3">
-                  <Users size={21} className="text-blue-700" />
-                  <h3 className="font-bold text-[#102B50]">
-                    Pelayanan Masyarakat
-                  </h3>
-                </div>
-
-                <p className="text-sm text-slate-500 leading-relaxed">
-                  Pemerintah desa berkomitmen memberikan pelayanan administrasi yang mudah, transparan, dan bertanggung jawab.
-                </p>
-              </div>
-
-            </div>
-
-          </div>
-        </div>
-      </section>
-
-      {/* FOOTER LENGKAP */}
-      <footer className="bg-[#102B50] text-white">
-
-        {/* BAGIAN UTAMA FOOTER */}
-        <div className="max-w-7xl mx-auto px-5 lg:px-8 pt-16 pb-12">
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 lg:gap-12">
-
-            {/* KOLOM 1: IDENTITAS DESA */}
-            <div className="lg:col-span-1">
-
-              <div className="flex items-center gap-3 mb-6">
-
-                {setting.logoDesa ? (
-                  <img
-                    src={setting.logoDesa}
-                    alt="Logo Desa"
-                    className="w-14 h-14 object-contain"
-                  />
-                ) : (
-                  <div className="w-14 h-14 rounded-xl bg-white/10 flex items-center justify-center">
-                    <Building2 size={30} />
-                  </div>
-                )}
-
-                <div>
-                  <h3 className="font-bold text-lg leading-tight">
-                    {setting.namaDesa}
-                  </h3>
-
-                  <p className="text-xs text-blue-200 mt-1">
-                    {setting.sloganDesa || 'Sistem Informasi Desa'}
-                  </p>
-                </div>
-
-              </div>
-
-              <p className="text-sm text-blue-100/80 leading-relaxed">
-                Portal resmi {setting.namaDesa} sebagai sarana informasi
-                pemerintahan, pelayanan masyarakat, dan keterbukaan informasi
-                publik desa.
-              </p>
-
-              <div className="flex items-center gap-2 mt-6 text-blue-200">
-                <ShieldCheck size={17} />
-                <span className="text-xs font-medium">
-                  Melayani dengan transparan dan profesional
+    <section id="transparansi" className="scroll-mt-24 bg-white py-16 sm:py-24">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6">
+        <SectionHeading
+          title="Statistik dan transparansi anggaran"
+          description="Angka ringkas kependudukan dan realisasi APBDes tahun 2026. Data contoh, perbarui setiap bulan."
+          action={{ label: "Unduh laporan APBDes", href: "#" }}
+        />
+
+        <div className="mt-10 grid gap-6 lg:grid-cols-5">
+          {/* APBDes */}
+          <Reveal className="lg:col-span-3">
+            <div className="h-full rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm transition-shadow duration-300 hover:shadow-md sm:p-8">
+              <div className="flex items-center gap-3">
+                <span className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-100">
+                  <Wallet className="h-5 w-5" aria-hidden />
                 </span>
+                <h3 className={`${HEADING} text-xl font-semibold text-slate-900`}>
+                  APBDes 2026
+                </h3>
               </div>
 
-            </div>
-
-            {/* KOLOM 2: NAVIGASI */}
-            <div>
-
-              <h3 className="text-base font-bold mb-6">
-                Navigasi Cepat
-              </h3>
-
-              <ul className="space-y-4">
-
-                <li>
-                  <a
-                    href="#beranda"
-                    className="flex items-center gap-3 text-sm text-blue-100/80 hover:text-white transition-colors"
-                  >
-                    <Home size={16} />
-                    Beranda
-                  </a>
-                </li>
-
-                <li>
-                  <a
-                    href="#profil"
-                    className="flex items-center gap-3 text-sm text-blue-100/80 hover:text-white transition-colors"
-                  >
-                    <Info size={16} />
-                    Profil Desa
-                  </a>
-                </li>
-
-                <li>
-                  <a
-                    href="#transparansi"
-                    className="flex items-center gap-3 text-sm text-blue-100/80 hover:text-white transition-colors"
-                  >
-                    <ShieldCheck size={16} />
-                    Transparansi Bansos
-                  </a>
-                </li>
-
-                <li>
-                  <a
-                    href="#kegiatan"
-                    className="flex items-center gap-3 text-sm text-blue-100/80 hover:text-white transition-colors"
-                  >
-                    <Video size={16} />
-                    Kegiatan Desa
-                  </a>
-                </li>
-
-              </ul>
-
-            </div>
-
-            {/* KOLOM 3: LAYANAN DAN INFORMASI */}
-            <div>
-
-              <h3 className="text-base font-bold mb-6">
-                Layanan dan Informasi
-              </h3>
-
-              <ul className="space-y-4">
-
-                <li>
-                  <a
-                    href="/login"
-                    className="flex items-center gap-3 text-sm text-blue-100/80 hover:text-white transition-colors"
-                  >
-                    <FileText size={16} />
-                    Pelayanan Administrasi
-                  </a>
-                </li>
-
-                <li>
-                  <a
-                    href="/login"
-                    className="flex items-center gap-3 text-sm text-blue-100/80 hover:text-white transition-colors"
-                  >
-                    <ClipboardList size={16} />
-                    Pengajuan Surat
-                  </a>
-                </li>
-
-                <li>
-                  <a
-                    href="#transparansi"
-                    className="flex items-center gap-3 text-sm text-blue-100/80 hover:text-white transition-colors"
-                  >
-                    <Users size={16} />
-                    Informasi Bantuan Sosial
-                  </a>
-                </li>
-
-                <li>
-                  <a
-                    href="/login"
-                    className="flex items-center gap-3 text-sm text-blue-100/80 hover:text-white transition-colors"
-                  >
-                    <ArrowRight size={16} />
-                    Masuk Sistem Desa
-                  </a>
-                </li>
-
-              </ul>
-
-            </div>
-
-            {/* KOLOM 4: INFORMASI WILAYAH */}
-            <div>
-
-              <h3 className="text-base font-bold mb-6">
-                Informasi Wilayah
-              </h3>
-
-              <div className="space-y-5">
-
-                <div className="flex items-start gap-3">
-
-                  <div className="w-9 h-9 shrink-0 rounded-lg bg-white/10 flex items-center justify-center">
-                    <MapPin size={18} />
-                  </div>
-
-                  <div>
-                    <p className="text-sm font-semibold">
-                      Wilayah Desa
-                    </p>
-
-                    <p className="text-sm text-blue-100/80 leading-relaxed mt-1">
-                      {setting.namaDesa}
-                      <br />
-                      Kecamatan Pancur Batu
-                      <br />
-                      Kabupaten Deli Serdang
-                      <br />
-                      Sumatera Utara, Indonesia
+              <div className="mt-6 grid gap-6 sm:grid-cols-2">
+                {BUDGET_SUMMARY.map((b) => (
+                  <div key={b.label}>
+                    <div className="flex items-baseline justify-between">
+                      <p className="text-sm font-medium text-slate-600">{b.label}</p>
+                      <p className="text-sm font-semibold text-slate-900">{b.pct}%</p>
+                    </div>
+                    <div className="mt-2">
+                      <ProgressBar pct={b.pct} />
+                    </div>
+                    <p className="mt-2 text-sm text-slate-500">
+                      Terealisasi {b.realized} dari {b.target}
                     </p>
                   </div>
+                ))}
+              </div>
 
+              <div className="mt-8 border-t border-slate-100 pt-6">
+                <h4 className="text-sm font-semibold text-slate-900">
+                  Belanja menurut bidang
+                </h4>
+                <ul className="mt-4 space-y-4">
+                  {BUDGET_SPLIT.map((row) => (
+                    <li key={row.label}>
+                      <div className="flex items-baseline justify-between gap-3 text-sm">
+                        <span className="text-slate-700">{row.label}</span>
+                        <span className="shrink-0 font-semibold text-slate-900">
+                          {row.amount}
+                        </span>
+                      </div>
+                      <div className="mt-1.5">
+                        <ProgressBar pct={row.pct * 2.2} tone="teal" />
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <p className="mt-6 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                <Megaphone className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+                Rincian proyek dan nilai kontrak tersedia di papan informasi
+                kantor desa dan dapat diminta secara tertulis.
+              </p>
+            </div>
+          </Reveal>
+
+          {/* Kependudukan */}
+          <div className="grid gap-6 lg:col-span-2">
+            <Reveal delay={0.08}>
+              <div className="h-full rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg sm:p-8">
+                <div className="flex items-center gap-3">
+                  <span className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-100">
+                    <Users className="h-5 w-5" aria-hidden />
+                  </span>
+                  <h3 className={`${HEADING} text-xl font-semibold text-slate-900`}>
+                    Kependudukan
+                  </h3>
                 </div>
 
-                <div className="flex items-start gap-3">
-
-                  <div className="w-9 h-9 shrink-0 rounded-lg bg-white/10 flex items-center justify-center">
-                    <Landmark size={18} />
+                <dl className="mt-6 grid grid-cols-2 gap-4">
+                  <div className="rounded-xl bg-slate-50 p-4">
+                    <dt className="text-sm text-slate-500">Penduduk</dt>
+                    <dd className={`${HEADING} mt-1 text-2xl font-semibold text-slate-900`}>
+                      {POPULATION.total}
+                    </dd>
                   </div>
-
-                  <div>
-                    <p className="text-sm font-semibold">
-                      Pemerintahan Desa
-                    </p>
-
-                    <p className="text-sm text-blue-100/80 leading-relaxed mt-1">
-                      Portal Informasi Resmi Pemerintah {setting.namaDesa}.
-                    </p>
+                  <div className="rounded-xl bg-slate-50 p-4">
+                    <dt className="text-sm text-slate-500">Kepala keluarga</dt>
+                    <dd className={`${HEADING} mt-1 text-2xl font-semibold text-slate-900`}>
+                      {POPULATION.households}
+                    </dd>
                   </div>
+                </dl>
 
+                <div className="mt-6">
+                  <div className="flex justify-between text-sm text-slate-600">
+                    <span>Laki-laki {POPULATION.male.toLocaleString("id-ID")}</span>
+                    <span>Perempuan {POPULATION.female.toLocaleString("id-ID")}</span>
+                  </div>
+                  <div className="mt-2 flex h-2.5 overflow-hidden rounded-full bg-teal-600">
+                    <div
+                      className="h-full bg-emerald-600"
+                      style={{ width: `${maleShare}%` }}
+                    />
+                  </div>
                 </div>
+              </div>
+            </Reveal>
 
+            <Reveal delay={0.16}>
+              <div className="flex h-full flex-col justify-between rounded-2xl border border-slate-200/80 bg-slate-900 p-6 text-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg sm:p-8">
+                <h3 className={`${HEADING} text-xl font-semibold`}>
+                  Ada pertanyaan soal anggaran?
+                </h3>
+                <p className="mt-2 text-sm leading-relaxed text-slate-300">
+                  Warga berhak meminta penjelasan. Datang ke kantor desa atau
+                  tulis pertanyaan Anda lewat layanan aduan.
+                </p>
                 <a
-                  href="#beranda"
-                  className="inline-flex items-center gap-2 text-sm font-semibold text-blue-200 hover:text-white transition-colors"
+                  href="#layanan"
+                  className="group mt-5 inline-flex items-center gap-2 self-start rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 transition-all duration-300 hover:bg-emerald-50 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
                 >
-                  Kembali ke atas
-                  <ArrowRight size={16} className="-rotate-45" />
+                  Tulis pertanyaan
+                  <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" aria-hidden />
                 </a>
-
               </div>
-
-            </div>
-
+            </Reveal>
           </div>
+        </div>
+      </div>
+    </section>
+  );
+}
 
+/* -------------------------------------------------------------------------- */
+/*  Footer                                                                    */
+/* -------------------------------------------------------------------------- */
+
+function Footer() {
+  return (
+    <footer id="kontak" className="scroll-mt-24 bg-slate-900 text-slate-300">
+      <div className="mx-auto grid max-w-6xl gap-10 px-4 py-14 sm:px-6 md:grid-cols-2 lg:grid-cols-4">
+        <div className="lg:col-span-1">
+          <div className="flex items-center gap-3">
+            <span className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-xl bg-white p-1">
+              {SETTING.logoDesa ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={SETTING.logoDesa} alt="" className="h-full w-full object-contain" />
+              ) : (
+                <Sprout className="h-5 w-5 text-emerald-700" aria-hidden />
+              )}
+            </span>
+            <span className={`${HEADING} text-lg font-semibold text-white`}>
+              {SETTING.namaDesa}
+            </span>
+          </div>
+          <p className="mt-4 text-sm leading-relaxed text-slate-400">
+            Pemerintah {VILLAGE.name}, {VILLAGE.region}. Melayani warga dengan
+            terbuka dan bertanggung jawab.
+          </p>
         </div>
 
-        {/* BAGIAN BAWAH FOOTER */}
-        <div className="border-t border-white/15">
-
-          <div className="max-w-7xl mx-auto px-5 lg:px-8 py-6">
-
-            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-
-              <p className="text-xs text-blue-200 text-center md:text-left">
-                © {new Date().getFullYear()} {setting.namaDesa}.
-                Hak cipta dilindungi.
-              </p>
-
-              <p className="text-xs text-blue-200 text-center">
-                Dibangun untuk pelayanan publik yang lebih baik.
-              </p>
-
-            </div>
-
-          </div>
-
+        <div>
+          <h3 className="text-sm font-semibold text-white">Kantor desa</h3>
+          <ul className="mt-4 space-y-3 text-sm">
+            <li className="flex gap-2.5">
+              <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" aria-hidden />
+              <span>{VILLAGE.address}</span>
+            </li>
+            <li className="flex gap-2.5">
+              <Phone className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" aria-hidden />
+              <a href={`tel:${VILLAGE.phone.replace(/-/g, "")}`} className="hover:text-white">
+                {VILLAGE.phone}
+              </a>
+            </li>
+            <li className="flex gap-2.5">
+              <Mail className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" aria-hidden />
+              <a href={`mailto:${VILLAGE.email}`} className="break-all hover:text-white">
+                {VILLAGE.email}
+              </a>
+            </li>
+          </ul>
         </div>
 
-      </footer>
+        <div>
+          <h3 className="text-sm font-semibold text-white">Jam operasional</h3>
+          <ul className="mt-4 space-y-3 text-sm">
+            {VILLAGE.hours.map((h) => (
+              <li key={h.day} className="flex items-start gap-2.5">
+                <Clock className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" aria-hidden />
+                <span>
+                  <span className="block text-slate-400">{h.day}</span>
+                  <span className="font-medium text-slate-200">{h.time}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
 
-    </main>
-  )
+        <div>
+          <h3 className="text-sm font-semibold text-white">Kontak darurat</h3>
+          <ul className="mt-4 space-y-2.5">
+            {VILLAGE.emergency.map((c) => (
+              <li key={c.label}>
+                <a
+                  href={`tel:${c.number.replace(/-/g, "")}`}
+                  className="group flex items-center justify-between gap-3 rounded-xl border border-slate-700 px-4 py-3 text-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-amber-400/60 hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                >
+                  <span>
+                    <span className="block text-slate-400">{c.label}</span>
+                    <span className="font-semibold text-white">{c.number}</span>
+                  </span>
+                  <Phone className="h-4 w-4 text-amber-400 transition-transform duration-300 group-hover:rotate-12" aria-hidden />
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+
+      <div className="border-t border-slate-800">
+        <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-5 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <p>
+            © <CurrentYear /> Pemerintah {VILLAGE.name}. Seluruh hak dilindungi.
+          </p>
+          <p>Konten situs ini dikelola oleh operator desa.</p>
+        </div>
+      </div>
+    </footer>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Halaman                                                                   */
+/* -------------------------------------------------------------------------- */
+
+export default function Page() {
+  return (
+    // reducedMotion="user": pengunjung yang mengaktifkan "kurangi gerakan"
+    // di sistemnya tidak akan melihat animasi geser. Aman untuk SSR.
+    <MotionConfig reducedMotion="user">
+    <div className="min-h-screen bg-white font-[family-name:var(--font-geist-sans)] text-slate-600">
+      <Navbar setting={SETTING} />
+      {/* Navbar fixed setinggi 76px */}
+      <main className="pt-[76px]">
+        <NoticeBar />
+        <Hero />
+        <Services />
+        <News />
+        <Transparency />
+      </main>
+      <Footer />
+    </div>
+    </MotionConfig>
+  );
 }
