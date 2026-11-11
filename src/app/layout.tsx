@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Fraunces } from "next/font/google";
 import Script from "next/script";
+import { Suspense } from "react";
 import InstallPWA from "@/app/dashboard/InstallPWA"; // Import komponen InstallPWA
+import { AlertProvider } from "@/components/ui/alert";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -53,10 +55,14 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable} h-full scroll-smooth antialiased`}
     >
       <body suppressHydrationWarning className="min-h-full flex flex-col">
-        {children}
+        <AlertProvider>
+          {children}
 
-        {/* Banner Install PWA Aktif Global (Halaman Login & Dashboard) */}
-        <InstallPWA />
+          {/* Banner install PWA hanya untuk halaman depan publik */}
+          <Suspense fallback={null}>
+            <InstallPWA />
+          </Suspense>
+        </AlertProvider>
 
         {/* Script untuk mendaftarkan Service Worker PWA */}
         <Script id="register-sw" strategy="afterInteractive">

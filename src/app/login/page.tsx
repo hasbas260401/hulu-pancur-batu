@@ -4,7 +4,6 @@ import LoginFormClient from './LoginFormClient'
 
 const prisma = new PrismaClient()
 
-// Komponen terpisah untuk mengambil data logo dari database
 async function LoginWithLogo() {
   const settings = await prisma.webSettings.findFirst().catch(() => null)
   const logoDesa = settings?.logoDesa || ''

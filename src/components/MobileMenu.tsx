@@ -100,7 +100,7 @@ export default function MobileMenu({ links }: MobileMenuProps) {
                       >
                         <Icon className="h-4 w-4" />
                       </span>
-                      {urgent ? 'Kontak darurat' : link.label}
+                      {link.label}
                     </a>
                   )
                 })}

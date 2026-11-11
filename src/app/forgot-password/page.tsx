@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import Swal from 'sweetalert2'
+import { useAlert } from '@/components/ui/alert'
 
 export default function ForgotPasswordPage() {
   const [nik, setNik] = useState('')
@@ -13,6 +13,7 @@ export default function ForgotPasswordPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const router = useRouter()
+  const alert = useAlert()
 
   // Cek NIK dan Ambil Kisi-kisi Email secara Real-Time
   const handleNikChange = async (val: string) => {
@@ -64,23 +65,19 @@ export default function ForgotPasswordPage() {
       setEmailInput('')
       setEmailMasked('Masukkan NIK terlebih dahulu...')
 
-      // Notifikasi Sukses dengan SweetAlert2
-      Swal.fire({
+      // Notifikasi sukses
+      const lanjut = await alert.show({
         title: 'Berhasil Terkirim!',
-        text: 'Link reset password berhasil dikirim. Silakan periksa inbox atau folder spam email Anda.',
-        icon: 'success',
-        confirmButtonText: 'Kembali ke Login',
-        confirmButtonColor: '#2563eb',
-        allowOutsideClick: false,
-        customClass: {
-          popup: 'rounded-3xl shadow-2xl p-6',
-          confirmButton: 'rounded-xl px-6 py-3 font-bold text-sm shadow-lg shadow-blue-600/30'
-        }
-      }).then((result) => {
-        if (result.isConfirmed) {
-          router.push('/login')
-        }
+        message:
+          'Link reset password berhasil dikirim. Silakan periksa inbox atau folder spam email Anda.',
+        type: 'success',
+        confirmText: 'Kembali ke Login',
+        persistent: true,
       })
+
+      if (lanjut) {
+        router.push('/login')
+      }
 
     } catch (err: any) {
       setError(err.message)
@@ -91,38 +88,39 @@ export default function ForgotPasswordPage() {
 
   return (
     <>
-      {/* Background Gelap Elegan */}
-      <div className="fixed inset-0 z-0 overflow-hidden bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 pointer-events-none" aria-hidden="true">
-        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#3b82f6_1px,transparent_1px)] [background-size:16px_16px]"></div>
-        <div className="absolute -top-24 -left-24 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl"></div>
-        <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-indigo-500/20 rounded-full blur-3xl"></div>
+      {/* Background Bersih sesuai DESIGN.md */}
+      <div className="fixed inset-0 z-0 overflow-hidden bg-slate-50 pointer-events-none" aria-hidden="true">
+        <div className="absolute inset-0 opacity-[0.03] bg-[radial-gradient(#10b981_1px,transparent_1px)] [background-size:24px_24px]"></div>
       </div>
 
-      <div className="relative z-10 min-h-screen min-h-[100dvh] flex items-center justify-center p-4 sm:p-6">
+      <div className="relative z-10 min-h-screen min-h-[100dvh] flex items-center justify-center p-4 sm:p-6 font-[family-name:var(--font-geist-sans)]">
         <div className="w-full max-w-5xl">
           
           {/* Kontainer Utama Split Screen */}
-          <div className="bg-white rounded-2xl shadow-2xl shadow-black/30 border border-white/20 overflow-hidden grid grid-cols-1 lg:grid-cols-12">
+          <div className="bg-white rounded-2xl shadow-xl border border-slate-200/80 overflow-hidden grid grid-cols-1 lg:grid-cols-12">
             
             {/* PANEL KIRI: Branding & Informasi */}
-            <div className="lg:col-span-5 bg-gradient-to-br from-blue-900 via-blue-800 to-slate-900 p-8 sm:p-10 flex flex-col justify-between text-white relative overflow-hidden">
+            <div className="lg:col-span-5 bg-gradient-to-br from-emerald-950 via-emerald-900 to-slate-900 p-8 sm:p-10 flex flex-col justify-between text-white relative overflow-hidden">
+              <div className="absolute -top-24 -left-24 w-72 h-72 bg-emerald-600/20 rounded-full blur-3xl pointer-events-none"></div>
+              <div className="absolute -bottom-24 -right-24 w-72 h-72 bg-teal-500/20 rounded-full blur-3xl pointer-events-none"></div>
+
               <div className="space-y-3 relative z-10">
-                <span className="px-3.5 py-1 bg-blue-500/30 border border-blue-400/30 rounded-full text-xs font-semibold uppercase text-blue-200">
+                <span className="px-3.5 py-1 bg-emerald-500/20 border border-emerald-400/30 rounded-full text-xs font-semibold tracking-wider uppercase text-emerald-200">
                   Pemulihan Akun
                 </span>
-                <h2 className="text-2xl font-extrabold tracking-tight">SIDU Desa Hulu Pancur Batu</h2>
+                <h2 className="font-[family-name:var(--font-display)] text-2xl font-semibold tracking-tight text-white">SIDU Desa Hulu Pancur Batu</h2>
               </div>
 
               <div className="space-y-4 my-8 relative z-10">
                 <div className="p-4 bg-white/10 backdrop-blur-md rounded-xl border border-white/10 space-y-1.5">
-                  <p className="text-sm font-semibold text-blue-100">Lupa Password Akun?</p>
-                  <p className="text-xs text-blue-200/80 leading-relaxed">
+                  <p className="text-sm font-semibold text-emerald-100">Lupa Password Akun?</p>
+                  <p className="text-xs text-emerald-200/80 leading-relaxed">
                     Masukkan NIK terdaftar Anda untuk memverifikasi identitas, lalu kirimkan tautan pemulihan ke email aktif Anda.
                   </p>
                 </div>
               </div>
 
-              <div className="text-xs text-blue-300/70 relative z-10">
+              <div className="text-xs text-emerald-300/70 relative z-10">
                 &copy; 2026 Desa Hulu Pancur Batu
               </div>
             </div>
@@ -132,13 +130,13 @@ export default function ForgotPasswordPage() {
               <div className="w-full max-w-md mx-auto space-y-5">
                 
                 <div className="space-y-1">
-                  <Link href="/login" className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700 mb-2 transition">
+                  <Link href="/login" className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 hover:text-emerald-800 mb-2 transition">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M15 18l-6-6 6-6" />
                     </svg>
                     Kembali ke Login
                   </Link>
-                  <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
+                  <h1 className="font-[family-name:var(--font-display)] text-xl sm:text-2xl font-semibold text-slate-900 tracking-tight">
                     Pemulihan Password
                   </h1>
                   <p className="text-xs sm:text-sm text-slate-500">
@@ -157,7 +155,7 @@ export default function ForgotPasswordPage() {
                   
                   {/* NIK Input */}
                   <div className="space-y-1.5">
-                    <label className="block text-xs sm:text-sm font-semibold text-slate-700">NIK (16 Digit)</label>
+                    <label className="block text-xs sm:text-sm font-medium text-slate-900">NIK (16 Digit)</label>
                     <div className="relative">
                       <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400 pointer-events-none">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -171,14 +169,14 @@ export default function ForgotPasswordPage() {
                         value={nik}
                         onChange={(e) => handleNikChange(e.target.value)}
                         placeholder="Masukkan 16 digit NIK"
-                        className="w-full h-11 pl-11 pr-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-600 focus:bg-white focus:outline-none text-slate-800 text-xs sm:text-sm"
+                        className="w-full h-11 pl-11 pr-4 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-600/20 focus:border-emerald-600 focus:bg-white focus:outline-none text-slate-900 text-xs sm:text-sm"
                       />
                     </div>
                   </div>
 
                   {/* Email Terdaftar Input */}
                   <div className="space-y-1.5">
-                    <label className="block text-xs sm:text-sm font-semibold text-slate-700">Email Terdaftar</label>
+                    <label className="block text-xs sm:text-sm font-medium text-slate-900">Email Terdaftar</label>
                     <div className="relative">
                       <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400 pointer-events-none">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -191,7 +189,7 @@ export default function ForgotPasswordPage() {
                         value={emailInput}
                         onChange={(e) => setEmailInput(e.target.value)}
                         placeholder={emailMasked}
-                        className="w-full h-11 pl-11 pr-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-600 focus:bg-white focus:outline-none text-slate-800 text-xs sm:text-sm placeholder:text-slate-400"
+                        className="w-full h-11 pl-11 pr-4 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-600/20 focus:border-emerald-600 focus:bg-white focus:outline-none text-slate-900 text-xs sm:text-sm placeholder:text-slate-400"
                       />
                     </div>
                   </div>
@@ -200,7 +198,7 @@ export default function ForgotPasswordPage() {
                   <button
                     type="submit"
                     disabled={loading || nik.length !== 16 || !emailInput}
-                    className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow-lg shadow-blue-600/30 transition disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2 mt-2"
+                    className="w-full h-11 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs sm:text-sm rounded-xl shadow-sm transition disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2 mt-2"
                   >
                     {loading ? (
                       <>

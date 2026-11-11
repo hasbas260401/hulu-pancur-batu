@@ -3,11 +3,15 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import Swal from 'sweetalert2'
+import { useAlert } from '@/components/ui/alert'
 
 export default function RegisterPage() {
   const [nik, setNik] = useState('')
-  const [nikStatus, setNikStatus] = useState<{ checked: boolean; valid: boolean; message: string }>({ checked: false, valid: false, message: '' })
+  const [nikStatus, setNikStatus] = useState<{ checked: boolean; valid: boolean; message: string; nama?: string; dusunNama?: string }>({ 
+    checked: false, 
+    valid: false, 
+    message: '' 
+  })
   
   const [email, setEmail] = useState('')
   const [otp, setOtp] = useState('')
@@ -29,6 +33,7 @@ export default function RegisterPage() {
   const [loadingOtp, setLoadingOtp] = useState(false)
   const [loadingRegister, setLoadingRegister] = useState(false)
   const router = useRouter()
+  const alert = useAlert()
 
   useEffect(() => {
     let timer: NodeJS.Timeout
@@ -59,7 +64,13 @@ export default function RegisterPage() {
           body: JSON.stringify({ nik: val }),
         })
         const data = await res.json()
-        setNikStatus({ checked: true, valid: data.valid, message: data.message })
+        setNikStatus({ 
+          checked: true, 
+          valid: data.valid, 
+          message: data.message, 
+          nama: data.nama, 
+          dusunNama: data.dusunNama 
+        })
       } catch (err) {
         setNikStatus({ checked: true, valid: false, message: 'Gagal memverifikasi NIK.' })
       }
@@ -71,7 +82,7 @@ export default function RegisterPage() {
   const isPasswordStrong = (pass: string) => {
     const hasLetter = /[a-zA-Z]/.test(pass)
     const hasNumber = /[0-9]/.test(pass)
-    return pass.length >= 6 && hasLetter && hasNumber
+    return pass.length >= 8 && hasLetter && hasNumber
   }
 
   const handleSendOtp = async () => {
@@ -148,7 +159,7 @@ export default function RegisterPage() {
       return
     }
     if (!isPasswordStrong(password)) {
-      setError('Password harus gabungan huruf dan angka (minimal 6 karakter).')
+      setError('Password harus gabungan huruf dan angka (minimal 8 karakter).')
       return
     }
     if (password !== confirmPassword) {
@@ -188,23 +199,19 @@ export default function RegisterPage() {
       setConfirmPassword('')
       setOtpError('')
 
-      // --- MUNCULKAN SWEETALERT2 POP-UP SUKSES ---
-      Swal.fire({
+      // --- TAMPILKAN DIALOG SUKSES ---
+      const lanjut = await alert.show({
         title: 'Pendaftaran Berhasil!',
-        text: 'Akun warga Anda berhasil didaftarkan dan saat ini sedang menunggu proses verifikasi oleh Admin atau Kepala Dusun.',
-        icon: 'success',
-        confirmButtonText: 'Masuk ke Halaman Login',
-        confirmButtonColor: '#2563eb', // Warna biru Tailwind (blue-600)
-        allowOutsideClick: false,
-        customClass: {
-          popup: 'rounded-3xl shadow-2xl p-6',
-          confirmButton: 'rounded-xl px-6 py-3 font-bold text-sm shadow-lg shadow-blue-600/30'
-        }
-      }).then((result) => {
-        if (result.isConfirmed) {
-          router.push('/login')
-        }
+        message:
+          'Akun warga Anda berhasil didaftarkan dan saat ini sedang menunggu proses verifikasi oleh Admin atau Kepala Dusun.',
+        type: 'success',
+        confirmText: 'Masuk ke Halaman Login',
+        persistent: true,
       })
+
+      if (lanjut) {
+        router.push('/login')
+      }
 
     } catch (err: any) {
       setError(err.message)
@@ -240,36 +247,37 @@ export default function RegisterPage() {
 
   return (
     <>
-      <div className="fixed inset-0 z-0 overflow-hidden bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 pointer-events-none" aria-hidden="true">
-        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#3b82f6_1px,transparent_1px)] [background-size:16px_16px]"></div>
-        <div className="absolute -top-24 -left-24 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl"></div>
-        <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-indigo-500/20 rounded-full blur-3xl"></div>
+      <div className="fixed inset-0 z-0 overflow-hidden bg-slate-50 pointer-events-none" aria-hidden="true">
+        <div className="absolute inset-0 opacity-[0.03] bg-[radial-gradient(#10b981_1px,transparent_1px)] [background-size:24px_24px]"></div>
       </div>
 
-      <div className="relative z-10 min-h-screen min-h-[100dvh] flex items-center justify-center p-4 sm:p-6">
+      <div className="relative z-10 min-h-screen min-h-[100dvh] flex items-center justify-center p-4 sm:p-6 font-[family-name:var(--font-geist-sans)]">
         <div className="w-full max-w-6xl">
           
-          <div className="bg-white rounded-2xl shadow-2xl shadow-black/30 border border-white/20 overflow-hidden grid grid-cols-1 lg:grid-cols-12">
+          <div className="bg-white rounded-2xl shadow-xl border border-slate-200/80 overflow-hidden grid grid-cols-1 lg:grid-cols-12">
             
             {/* PANEL KIRI: Branding */}
-            <div className="lg:col-span-4 bg-gradient-to-br from-blue-900 via-blue-800 to-slate-900 p-8 sm:p-10 flex flex-col justify-between text-white relative overflow-hidden">
+            <div className="lg:col-span-4 bg-gradient-to-br from-emerald-950 via-emerald-900 to-slate-900 p-8 sm:p-10 flex flex-col justify-between text-white relative overflow-hidden">
+              <div className="absolute -top-24 -left-24 w-72 h-72 bg-emerald-600/20 rounded-full blur-3xl pointer-events-none"></div>
+              <div className="absolute -bottom-24 -right-24 w-72 h-72 bg-teal-500/20 rounded-full blur-3xl pointer-events-none"></div>
+
               <div className="space-y-3 relative z-10">
-                <span className="px-3.5 py-1 bg-blue-500/30 border border-blue-400/30 rounded-full text-xs font-semibold uppercase text-blue-200">
+                <span className="px-3.5 py-1 bg-emerald-500/20 border border-emerald-400/30 rounded-full text-xs font-semibold tracking-wider uppercase text-emerald-200">
                   Pendaftaran Warga
                 </span>
-                <h2 className="text-2xl font-extrabold tracking-tight">SIDU Desa Hulu Pancur Batu</h2>
+                <h2 className="font-[family-name:var(--font-display)] text-2xl font-semibold tracking-tight text-white">SIDU Desa Hulu Pancur Batu</h2>
               </div>
 
               <div className="space-y-4 my-8 relative z-10">
                 <div className="p-4 bg-white/10 backdrop-blur-md rounded-xl border border-white/10 space-y-1.5">
-                  <p className="text-sm font-semibold text-blue-100">Verifikasi NIK & Keamanan</p>
-                  <p className="text-xs text-blue-200/80 leading-relaxed">
+                  <p className="text-sm font-semibold text-emerald-100">Verifikasi NIK & Keamanan</p>
+                  <p className="text-xs text-emerald-200/80 leading-relaxed">
                     Daftarkan akun menggunakan NIK terdaftar dan verifikasi email untuk mengakses layanan desa.
                   </p>
                 </div>
               </div>
 
-              <div className="text-xs text-blue-300/70 relative z-10">
+              <div className="text-xs text-emerald-300/70 relative z-10">
                 &copy; 2026 Desa Hulu Pancur Batu
               </div>
             </div>
@@ -279,7 +287,7 @@ export default function RegisterPage() {
               <div className="w-full max-w-3xl mx-auto space-y-5">
                 
                 <div className="text-center space-y-1">
-                  <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
+                  <h1 className="font-[family-name:var(--font-display)] text-xl sm:text-2xl font-semibold text-slate-900 tracking-tight">
                     Buat Akun Warga Baru
                   </h1>
                   <p className="text-xs sm:text-sm text-slate-500">
@@ -296,7 +304,7 @@ export default function RegisterPage() {
                     
                     {/* NIK */}
                     <div className="space-y-1.5">
-                      <label className="block text-xs sm:text-sm font-semibold text-slate-700">NIK (16 Digit)</label>
+                      <label className="block text-xs sm:text-sm font-medium text-slate-900">NIK (16 Digit)</label>
                       <div className="relative">
                         <input
                           type="text"
@@ -305,7 +313,7 @@ export default function RegisterPage() {
                           value={nik}
                           onChange={(e) => handleNikChange(e.target.value)}
                           placeholder="Masukkan 16 digit NIK"
-                          className="w-full h-11 px-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-600 focus:bg-white focus:outline-none text-slate-800 text-xs sm:text-sm"
+                          className="w-full h-11 px-3.5 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-600/20 focus:border-emerald-600 focus:bg-white focus:outline-none text-slate-900 text-xs sm:text-sm"
                         />
                         {nikStatus.checked && (
                           <span className="absolute inset-y-0 right-0 pr-3.5 flex items-center">
@@ -313,16 +321,37 @@ export default function RegisterPage() {
                           </span>
                         )}
                       </div>
-                      {nikStatus.checked && (
-                        <p className={`text-xs font-medium ${nikStatus.valid ? 'text-emerald-600' : 'text-rose-600'}`}>
+                      {/* Pesan error NIK jika tidak valid */}
+                      {nikStatus.checked && !nikStatus.valid && (
+                        <p className="text-xs font-medium text-rose-600">
                           {nikStatus.message}
                         </p>
                       )}
                     </div>
 
-                    {/* Email & Tombol OTP */}
+                    {/* Kolom Khusus Disabled untuk Inisial Nama Warga */}
                     <div className="space-y-1.5">
-                      <label className="block text-xs sm:text-sm font-semibold text-slate-700">Email Aktif</label>
+                      <label className="block text-xs sm:text-sm font-medium text-slate-900">Inisial Nama Warga</label>
+                      <input
+                        type="text"
+                        disabled
+                        value={nikStatus.valid && nikStatus.nama ? `${nikStatus.nama} (${nikStatus.dusunNama || '-'})` : 'Otomatis terisi setelah NIK valid'}
+                        className={`w-full h-11 px-3.5 border rounded-xl text-xs sm:text-sm font-medium cursor-not-allowed ${
+                          nikStatus.valid 
+                            ? 'bg-emerald-50/60 border-emerald-300 text-emerald-900' 
+                            : 'bg-slate-100 border-slate-200 text-slate-400'
+                        }`}
+                      />
+                    </div>
+
+                  </div>
+
+                  {/* Grid Kolom Email & Tombol OTP */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    
+                    {/* Email Aktif */}
+                    <div className="space-y-1.5">
+                      <label className="block text-xs sm:text-sm font-medium text-slate-900">Email Aktif</label>
                       <div className="flex gap-2">
                         <input
                           type="email"
@@ -330,17 +359,29 @@ export default function RegisterPage() {
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
                           placeholder="contoh@email.com"
-                          className="w-full h-11 px-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-600 focus:bg-white focus:outline-none text-slate-800 text-xs sm:text-sm"
+                          className="w-full h-11 px-3.5 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-600/20 focus:border-emerald-600 focus:bg-white focus:outline-none text-slate-900 text-xs sm:text-sm"
                         />
                         <button
                           type="button"
                           disabled={loadingOtp || !nikStatus.valid || (otpSent && timeLeft > 0)}
                           onClick={handleSendOtp}
-                          className="px-5 h-11 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl shrink-0 cursor-pointer transition disabled:opacity-50 flex items-center justify-center"
+                          className="px-5 h-11 bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold rounded-xl shrink-0 cursor-pointer transition disabled:opacity-50 flex items-center justify-center"
                         >
                           {loadingOtp ? '...' : (otpSent && timeLeft > 0 ? 'Kirim Ulang' : 'Kirim OTP')}
                         </button>
                       </div>
+                    </div>
+
+                    {/* WhatsApp */}
+                    <div className="space-y-1.5">
+                      <label className="block text-xs sm:text-sm font-medium text-slate-900">No. WhatsApp (Opsional)</label>
+                      <input
+                        type="text"
+                        value={noWhatsapp}
+                        onChange={(e) => setNoWhatsapp(e.target.value)}
+                        placeholder="081234567890"
+                        className="w-full h-11 px-3.5 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-600/20 focus:border-emerald-600 focus:bg-white focus:outline-none text-slate-900 text-xs sm:text-sm"
+                      />
                     </div>
 
                   </div>
@@ -349,8 +390,8 @@ export default function RegisterPage() {
                   {otpSent && (
                     <div className="space-y-1.5">
                       <div className="flex justify-between items-center">
-                        <label className="block text-xs sm:text-sm font-semibold text-slate-700">Kode OTP</label>
-                        <span className="text-xs font-bold text-blue-600">Berlaku: {formatTime(timeLeft)}</span>
+                        <label className="block text-xs sm:text-sm font-medium text-slate-900">Kode OTP</label>
+                        <span className="text-xs font-semibold text-emerald-700">Berlaku: {formatTime(timeLeft)}</span>
                       </div>
                       <div className="relative">
                         <input
@@ -361,7 +402,7 @@ export default function RegisterPage() {
                           value={otp}
                           onChange={(e) => handleOtpChange(e.target.value)}
                           placeholder="Masukkan 6 digit OTP"
-                          className={`w-full h-11 px-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-600 focus:bg-white focus:outline-none text-slate-800 text-xs sm:text-sm tracking-widest font-bold ${otpVerified ? 'bg-emerald-50 border-emerald-300 text-emerald-800' : ''}`}
+                          className={`w-full h-11 px-3.5 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-600/20 focus:border-emerald-600 focus:bg-white focus:outline-none text-slate-900 text-xs sm:text-sm tracking-widest font-semibold ${otpVerified ? 'bg-emerald-50 border-emerald-300 text-emerald-800' : ''}`}
                         />
                         {otp.length === 6 && (
                           <span className="absolute inset-y-0 right-0 pr-3.5 flex items-center">
@@ -373,32 +414,20 @@ export default function RegisterPage() {
                     </div>
                   )}
 
-                  {/* Grid 2 Kolom Kedua (WhatsApp & Password) */}
+                  {/* Grid Password & Konfirmasi Password */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     
-                    {/* WhatsApp */}
-                    <div className="space-y-1.5">
-                      <label className="block text-xs sm:text-sm font-semibold text-slate-700">No. WhatsApp (Opsional)</label>
-                      <input
-                        type="text"
-                        value={noWhatsapp}
-                        onChange={(e) => setNoWhatsapp(e.target.value)}
-                        placeholder="081234567890"
-                        className="w-full h-11 px-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-600 focus:bg-white focus:outline-none text-slate-800 text-xs sm:text-sm"
-                      />
-                    </div>
-
                     {/* Password Baru */}
                     <div className="space-y-1.5">
-                      <label className="block text-xs sm:text-sm font-semibold text-slate-700">Password Baru</label>
+                      <label className="block text-xs sm:text-sm font-medium text-slate-900">Password Baru</label>
                       <div className="relative">
                         <input
                           type={showPassword ? 'text' : 'password'}
                           required
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
-                          placeholder="Min. 6 karakter"
-                          className="w-full h-11 px-3.5 pr-16 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-600 focus:bg-white focus:outline-none text-slate-800 text-xs sm:text-sm"
+                          placeholder="Min. 8 karakter"
+                          className="w-full h-11 px-3.5 pr-16 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-600/20 focus:border-emerald-600 focus:bg-white focus:outline-none text-slate-900 text-xs sm:text-sm"
                         />
                         <div className="absolute inset-y-0 right-0 pr-2 flex items-center gap-1">
                           {password && (
@@ -415,50 +444,50 @@ export default function RegisterPage() {
                         </div>
                       </div>
                       <p className={`text-[11px] ${isPasswordStrong(password) ? 'text-emerald-600 font-medium' : 'text-slate-400'}`}>
-                        Harus gabungan huruf & angka, min. 6 karakter.
+                        Harus gabungan huruf & angka, min. 8 karakter.
                       </p>
                     </div>
 
-                  </div>
-
-                  {/* Konfirmasi Password */}
-                  <div className="space-y-1.5">
-                    <label className="block text-xs sm:text-sm font-semibold text-slate-700">Ulangi Password</label>
-                    <div className="relative">
-                      <input
-                        type={showConfirmPassword ? 'text' : 'password'}
-                        required
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        placeholder="Ulangi password baru"
-                        className="w-full h-11 px-3.5 pr-16 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-600 focus:bg-white focus:outline-none text-slate-800 text-xs sm:text-sm"
-                      />
-                      <div className="absolute inset-y-0 right-0 pr-2 flex items-center gap-1">
-                        {confirmPassword && (
-                          <span>{password === confirmPassword ? <CheckIcon /> : <CrossIcon />}</span>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => setShowConfirmPassword((v) => !v)}
-                          aria-label={showConfirmPassword ? 'Sembunyikan password' : 'Tampilkan password'}
-                          className="p-1 text-slate-400 hover:text-slate-600 cursor-pointer"
-                        >
-                          {showConfirmPassword ? <EyeOffIcon /> : <EyeIcon />}
-                        </button>
+                    {/* Konfirmasi Password */}
+                    <div className="space-y-1.5">
+                      <label className="block text-xs sm:text-sm font-medium text-slate-900">Ulangi Password</label>
+                      <div className="relative">
+                        <input
+                          type={showConfirmPassword ? 'text' : 'password'}
+                          required
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          placeholder="Ulangi password baru"
+                          className="w-full h-11 px-3.5 pr-16 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-600/20 focus:border-emerald-600 focus:bg-white focus:outline-none text-slate-900 text-xs sm:text-sm"
+                        />
+                        <div className="absolute inset-y-0 right-0 pr-2 flex items-center gap-1">
+                          {confirmPassword && (
+                            <span>{password === confirmPassword ? <CheckIcon /> : <CrossIcon />}</span>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => setShowConfirmPassword((v) => !v)}
+                            aria-label={showConfirmPassword ? 'Sembunyikan password' : 'Tampilkan password'}
+                            className="p-1 text-slate-400 hover:text-slate-600 cursor-pointer"
+                          >
+                            {showConfirmPassword ? <EyeOffIcon /> : <EyeIcon />}
+                          </button>
+                        </div>
                       </div>
+                      {confirmPassword && (
+                        <p className={`text-[11px] font-medium ${password === confirmPassword ? 'text-emerald-600' : 'text-rose-600'}`}>
+                          {password === confirmPassword ? '✓ Password sama dan cocok' : '✕ Password tidak sama'}
+                        </p>
+                      )}
                     </div>
-                    {confirmPassword && (
-                      <p className={`text-[11px] font-medium ${password === confirmPassword ? 'text-emerald-600' : 'text-rose-600'}`}>
-                        {password === confirmPassword ? '✓ Password sama dan cocok' : '✕ Password tidak sama'}
-                      </p>
-                    )}
+
                   </div>
 
                   {/* Tombol Submit */}
                   <button
                     type="submit"
                     disabled={loadingRegister || !nikStatus.valid || !otpVerified || !isPasswordStrong(password) || password !== confirmPassword}
-                    className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow-lg shadow-blue-600/30 transition disabled:opacity-50 cursor-pointer mt-2 flex items-center justify-center gap-2"
+                    className="w-full h-11 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs sm:text-sm rounded-xl shadow-sm transition disabled:opacity-50 cursor-pointer mt-2 flex items-center justify-center gap-2"
                   >
                     {loadingRegister ? 'Memproses Pendaftaran...' : 'Daftar Akun Warga'}
                   </button>
@@ -467,7 +496,7 @@ export default function RegisterPage() {
                 <div className="pt-3 border-t border-slate-100 text-center">
                   <p className="text-xs sm:text-sm text-slate-500">
                     Sudah punya akun?{' '}
-                    <Link href="/login" className="font-semibold text-blue-600 hover:text-blue-700 transition">
+                    <Link href="/login" className="font-semibold text-emerald-700 hover:text-emerald-800 transition">
                       Masuk di sini
                     </Link>
                   </p>

@@ -3,10 +3,11 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import Swal from 'sweetalert2'
+import { useAlert } from '@/components/ui/alert'
 
 export default function ResetPasswordPage() {
   const router = useRouter()
+  const alert = useAlert()
   const [token, setToken] = useState('')
   const [nik, setNik] = useState('')
   
@@ -73,22 +74,18 @@ export default function ResetPasswordPage() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
 
-      Swal.fire({
+      const lanjut = await alert.show({
         title: 'Password Berhasil Diubah!',
-        text: 'Password akun Anda telah diperbarui. Silakan masuk kembali menggunakan password baru.',
-        icon: 'success',
-        confirmButtonText: 'Masuk ke Halaman Login',
-        confirmButtonColor: '#2563eb',
-        allowOutsideClick: false,
-        customClass: {
-          popup: 'rounded-3xl shadow-2xl p-6',
-          confirmButton: 'rounded-xl px-6 py-3 font-bold text-sm shadow-lg shadow-blue-600/30'
-        }
-      }).then((result) => {
-        if (result.isConfirmed) {
-          router.push('/login?reset=success')
-        }
+        message:
+          'Password akun Anda telah diperbarui. Silakan masuk kembali menggunakan password baru.',
+        type: 'success',
+        confirmText: 'Masuk ke Halaman Login',
+        persistent: true,
       })
+
+      if (lanjut) {
+        router.push('/login?reset=success')
+      }
 
     } catch (err: any) {
       setError(err.message)
@@ -125,39 +122,37 @@ export default function ResetPasswordPage() {
 
   return (
     <>
-      <div className="fixed inset-0 z-0 overflow-hidden bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 pointer-events-none" aria-hidden="true">
-        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#3b82f6_1px,transparent_1px)] [background-size:16px_16px]"></div>
-        <div className="absolute -top-24 -left-24 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl"></div>
-        <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-indigo-500/20 rounded-full blur-3xl"></div>
+      <div className="fixed inset-0 z-0 overflow-hidden bg-slate-50 pointer-events-none" aria-hidden="true">
+        <div className="absolute inset-0 opacity-[0.03] bg-[radial-gradient(#10b981_1px,transparent_1px)] [background-size:24px_24px]"></div>
       </div>
 
-      <div className="relative z-10 min-h-screen min-h-[100dvh] flex items-center justify-center p-4 sm:p-6">
+      <div className="relative z-10 min-h-screen min-h-[100dvh] flex items-center justify-center p-4 sm:p-6 font-[family-name:var(--font-geist-sans)]">
         <div className="w-full max-w-5xl">
           
-          <div className="bg-white rounded-2xl shadow-2xl shadow-black/30 border border-white/20 overflow-hidden grid grid-cols-1 lg:grid-cols-12">
+          <div className="bg-white rounded-2xl shadow-xl border border-slate-200/80 overflow-hidden grid grid-cols-1 lg:grid-cols-12">
             
             {/* PANEL KIRI: Branding */}
-            <div className="lg:col-span-5 bg-gradient-to-br from-blue-900 via-blue-800 to-slate-900 p-8 sm:p-10 flex flex-col justify-between text-white relative overflow-hidden">
-              <div className="absolute -top-24 -left-24 w-72 h-72 bg-blue-600/30 rounded-full blur-3xl pointer-events-none"></div>
-              <div className="absolute -bottom-24 -right-24 w-72 h-72 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none"></div>
+            <div className="lg:col-span-5 bg-gradient-to-br from-emerald-950 via-emerald-900 to-slate-900 p-8 sm:p-10 flex flex-col justify-between text-white relative overflow-hidden">
+              <div className="absolute -top-24 -left-24 w-72 h-72 bg-emerald-600/20 rounded-full blur-3xl pointer-events-none"></div>
+              <div className="absolute -bottom-24 -right-24 w-72 h-72 bg-teal-500/20 rounded-full blur-3xl pointer-events-none"></div>
 
               <div className="space-y-3 relative z-10">
-                <span className="px-3.5 py-1 bg-blue-500/30 border border-blue-400/30 rounded-full text-xs font-semibold uppercase text-blue-200">
+                <span className="px-3.5 py-1 bg-emerald-500/20 border border-emerald-400/30 rounded-full text-xs font-semibold tracking-wider uppercase text-emerald-200">
                   Keamanan Akun
                 </span>
-                <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">SIDU Desa Hulu Pancur Batu</h2>
+                <h2 className="font-[family-name:var(--font-display)] text-2xl font-semibold tracking-tight text-white">SIDU Desa Hulu Pancur Batu</h2>
               </div>
 
               <div className="space-y-4 my-8 relative z-10">
                 <div className="p-4 bg-white/10 backdrop-blur-md rounded-xl border border-white/10 space-y-1.5">
-                  <p className="text-sm font-semibold text-blue-100">Perbarui Password Baru</p>
-                  <p className="text-xs text-blue-200/80 leading-relaxed">
+                  <p className="text-sm font-semibold text-emerald-100">Perbarui Password Baru</p>
+                  <p className="text-xs text-emerald-200/80 leading-relaxed">
                     Masukkan password baru yang kuat untuk mengamankan kembali akun warga Anda pada sistem layanan desa.
                   </p>
                 </div>
               </div>
 
-              <div className="text-xs text-blue-300/70 relative z-10">
+              <div className="text-xs text-emerald-300/70 relative z-10">
                 &copy; 2026 Desa Hulu Pancur Batu
               </div>
             </div>
@@ -167,7 +162,7 @@ export default function ResetPasswordPage() {
               <div className="w-full max-w-md mx-auto space-y-5">
                 
                 <div className="space-y-1">
-                  <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
+                  <h1 className="font-[family-name:var(--font-display)] text-xl sm:text-2xl font-semibold text-slate-900 tracking-tight">
                     Buat Password Baru
                   </h1>
                   <p className="text-xs sm:text-sm text-slate-500">
@@ -177,7 +172,7 @@ export default function ResetPasswordPage() {
 
                 {loadingToken ? (
                   <div className="text-center py-8 text-slate-500 text-sm flex flex-col items-center gap-2">
-                    <svg className="animate-spin h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24">
+                    <svg className="animate-spin h-6 w-6 text-emerald-600" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
@@ -186,7 +181,7 @@ export default function ResetPasswordPage() {
                 ) : error && !nik ? (
                   <div className="space-y-4">
                     <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-sm rounded-xl text-center">⚠️ {error}</div>
-                    <Link href="/login" className="block text-center w-full h-11 bg-slate-800 hover:bg-slate-900 text-white font-bold text-sm rounded-xl transition leading-[44px]">
+                    <Link href="/login" className="block text-center w-full h-11 bg-slate-800 hover:bg-slate-900 text-white font-semibold text-sm rounded-xl transition leading-[44px]">
                       Kembali ke Login
                     </Link>
                   </div>
@@ -200,7 +195,7 @@ export default function ResetPasswordPage() {
 
                     {/* 1. NIK OTOMATIS & DISABLE */}
                     <div className="space-y-1">
-                      <label className="block text-sm font-semibold text-slate-700">NIK (Terkunci)</label>
+                      <label className="block text-sm font-medium text-slate-900">NIK (Terkunci)</label>
                       <input
                         type="text"
                         disabled
@@ -211,7 +206,7 @@ export default function ResetPasswordPage() {
 
                     {/* 2. PASSWORD BARU DENGAN INDIKATOR KEKUATAN */}
                     <div className="space-y-1">
-                      <label className="block text-sm font-semibold text-slate-700">Password Baru</label>
+                      <label className="block text-sm font-medium text-slate-900">Password Baru</label>
                       <div className="relative">
                         <input
                           type={showPassword ? 'text' : 'password'}
@@ -219,7 +214,7 @@ export default function ResetPasswordPage() {
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
                           placeholder="Min. 6 karakter (Huruf & Angka)"
-                          className="w-full h-11 px-4 pr-16 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-600 focus:bg-white focus:outline-none text-slate-800 text-sm"
+                          className="w-full h-11 px-4 pr-16 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-600/20 focus:border-emerald-600 focus:bg-white focus:outline-none text-slate-900 text-sm"
                         />
                         <div className="absolute inset-y-0 right-0 pr-2.5 flex items-center gap-1">
                           {password && (
@@ -242,7 +237,7 @@ export default function ResetPasswordPage() {
 
                     {/* 3. ULANGI PASSWORD DENGAN INDIKATOR KECOCOKAN */}
                     <div className="space-y-1">
-                      <label className="block text-sm font-semibold text-slate-700">Ulangi Password Baru</label>
+                      <label className="block text-sm font-medium text-slate-900">Ulangi Password Baru</label>
                       <div className="relative">
                         <input
                           type={showConfirmPassword ? 'text' : 'password'}
@@ -250,7 +245,7 @@ export default function ResetPasswordPage() {
                           value={confirmPassword}
                           onChange={(e) => setConfirmPassword(e.target.value)}
                           placeholder="Ulangi password baru"
-                          className="w-full h-11 px-4 pr-16 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-600 focus:bg-white focus:outline-none text-slate-800 text-sm"
+                          className="w-full h-11 px-4 pr-16 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-600/20 focus:border-emerald-600 focus:bg-white focus:outline-none text-slate-900 text-sm"
                         />
                         <div className="absolute inset-y-0 right-0 pr-2.5 flex items-center gap-1">
                           {confirmPassword && (
@@ -276,7 +271,7 @@ export default function ResetPasswordPage() {
                     <button
                       type="submit"
                       disabled={loadingSubmit || !isPasswordStrong(password) || password !== confirmPassword}
-                      className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-xl shadow-lg shadow-blue-600/30 transition disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2 mt-2"
+                      className="w-full h-11 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-sm rounded-xl shadow-sm transition disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2 mt-2"
                     >
                       {loadingSubmit ? 'Menyimpan...' : 'Simpan Password Baru'}
                     </button>

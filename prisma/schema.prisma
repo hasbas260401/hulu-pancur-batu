@@ -295,6 +295,10 @@ model WebSettings {
   visiDesa        String   @default("Terwujudnya Desa Hulu Pancur Batu yang Mandiri, Religius, Sejahtera, Transparan, dan Berbasis Teknologi Informasi dalam Pelayanan Publik.")
   misiDesa        String   @default("Meningkatkan kualitas pelayanan administrasi kependudukan yang cepat, transparan, dan bebas pungutan liar.\nMengoptimalkan penyaluran bantuan sosial agar tepat sasaran kepada warga yang berhak secara adil.\nMemajukan infrastruktur desa serta menggerakkan ekonomi kerakyatan berbasis potensi lokal.")
   youtubeUrl      String   @default("https://www.youtube.com/embed/VUZlZm5V9R8")
+  // Konten terstruktur halaman depan (hero, layanan, berita, statistik,
+  // jam operasional, kontak darurat, footer) yang dikelola dari menu
+  // "Kelola Konten Web". Disimpan sebagai JSON agar mudah diperluas.
+  landingContent  Json?
   updatedAt       DateTime @updatedAt
 }
 model UserSession {

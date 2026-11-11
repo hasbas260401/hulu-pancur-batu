@@ -10,7 +10,7 @@ import {
   Loader2
 } from 'lucide-react'
 import Link from 'next/link'
-import Swal from 'sweetalert2'
+import { useAlert } from '@/components/ui/alert'
 
 export default function BansosClient({
   initialData,
@@ -27,6 +27,7 @@ export default function BansosClient({
   user: any
   hapusBansosAction: (formData: FormData) => Promise<any>
 }) {
+  const alert = useAlert()
   const [isPending, startTransition] = useTransition()
 
   const [data, setData] = useState(initialData)
@@ -98,52 +99,30 @@ export default function BansosClient({
     })
   }
 
-  // Fungsi khusus handle hapus data menggunakan SweetAlert2
+  // Fungsi khusus handle hapus data
   const handleDelete = async (id: string, namaWarga: string, programBansos: string) => {
-    const result = await Swal.fire({
+    const confirmed = await alert.confirm({
       title: 'Hapus Data Bansos?',
-      text: `Apakah Anda yakin ingin menghapus program ${programBansos} untuk warga ${namaWarga}?`,
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#e11d48',
-      cancelButtonColor: '#64748b',
-      confirmButtonText: 'Ya, Hapus!',
-      cancelButtonText: 'Batal',
-      reverseButtons: true,
-      customClass: {
-        popup: 'rounded-2xl text-xs',
-        confirmButton: 'rounded-xl text-xs font-bold px-4 py-2.5',
-        cancelButton: 'rounded-xl text-xs font-bold px-4 py-2.5',
-      }
+      message: `Apakah Anda yakin ingin menghapus program ${programBansos} untuk warga ${namaWarga}?`,
+      type: 'warning',
+      confirmText: 'Ya, Hapus',
+      cancelText: 'Batal',
     })
 
-    if (result.isConfirmed) {
-      const formData = new FormData()
-      formData.append('id', id)
+    if (!confirmed) return
 
-      try {
-        await hapusBansosAction(formData)
-        
-        Swal.fire({
-          title: 'Berhasil!',
-          text: 'Data bansos berhasil dihapus dari sistem.',
-          icon: 'success',
-          timer: 1500,
-          showConfirmButton: false,
-          customClass: { popup: 'rounded-2xl text-xs' }
-        })
+    const formData = new FormData()
+    formData.append('id', id)
 
-        // Ambil ulang data terbaru setelah berhasil dihapus
-        fetchBansosData(q, program, status, pagination.currentPage)
-      } catch (error: any) {
-        Swal.fire({
-          title: 'Gagal!',
-          text: error.message || 'Gagal menghapus data bansos.',
-          icon: 'error',
-          confirmButtonColor: '#2563eb',
-          customClass: { popup: 'rounded-2xl text-xs' }
-        })
-      }
+    try {
+      await hapusBansosAction(formData)
+
+      await alert.success('Berhasil', 'Data bansos berhasil dihapus dari sistem.')
+
+      // Ambil ulang data terbaru setelah berhasil dihapus
+      fetchBansosData(q, program, status, pagination.currentPage)
+    } catch (error: any) {
+      await alert.error('Gagal', error.message || 'Gagal menghapus data bansos.')
     }
   }
 

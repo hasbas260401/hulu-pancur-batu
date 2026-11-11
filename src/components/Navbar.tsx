@@ -11,12 +11,32 @@ interface NavbarProps {
     sloganDesa: string
     logoDesa: string | null
   }
+  nav?: {
+    home: string
+    services: string
+    news: string
+    transparency: string
+    contact: string
+    contactCta: string
+    loginStaff: string
+    loginShort: string
+  }
 }
 
 /*
   Satu sumber untuk menu desktop dan mobile.
-  Setiap href harus cocok dengan id section di app/page.tsx.
+  Setiap href harus cocok dengan id section di HomeClient.
 */
+export function buildNavLinks(nav: NonNullable<NavbarProps['nav']>) {
+  return [
+    { href: '#beranda', label: nav.home },
+    { href: '#layanan', label: nav.services },
+    { href: '#berita', label: nav.news },
+    { href: '#transparansi', label: nav.transparency },
+    { href: '#kontak', label: nav.contact },
+  ]
+}
+
 export const NAV_LINKS = [
   { href: '#beranda', label: 'Beranda' },
   { href: '#layanan', label: 'Layanan' },
@@ -28,8 +48,12 @@ export const NAV_LINKS = [
 const FOCUS =
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 focus-visible:ring-offset-white'
 
-export default function Navbar({ setting }: NavbarProps) {
+export default function Navbar({ setting, nav }: NavbarProps) {
   const [scrolled, setScrolled] = useState(false)
+  const navLinks = nav ? buildNavLinks(nav) : NAV_LINKS
+  const contactCta = nav?.contactCta ?? 'Kontak darurat'
+  const loginStaff = nav?.loginStaff ?? 'Login Perangkat Desa'
+  const loginShort = nav?.loginShort ?? 'Login'
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 15)
@@ -80,7 +104,7 @@ export default function Navbar({ setting }: NavbarProps) {
 
           {/* NAVIGASI DESKTOP */}
           <nav aria-label="Navigasi utama" className="hidden items-center gap-1 lg:flex">
-            {NAV_LINKS.map((link) => (
+            {navLinks.map((link) => (
               <a
                 key={link.href}
                 href={link.href}
@@ -101,7 +125,7 @@ export default function Navbar({ setting }: NavbarProps) {
                 size={16}
                 className="transition-transform duration-300 group-hover:rotate-12"
               />
-              Kontak darurat
+              {contactCta}
             </a>
             <Link
               href="/login"
@@ -111,7 +135,7 @@ export default function Navbar({ setting }: NavbarProps) {
                 size={16}
                 className="transition-transform duration-300 group-hover:-rotate-12"
               />
-              Login Perangkat Desa
+              {loginStaff}
             </Link>
           </div>
 
@@ -122,9 +146,9 @@ export default function Navbar({ setting }: NavbarProps) {
               className={`flex items-center gap-1.5 rounded-lg bg-emerald-700 px-3.5 py-2 text-xs font-semibold text-white transition-all hover:bg-emerald-800 active:scale-95 ${FOCUS}`}
             >
               <KeyRound size={14} />
-              Login
+              {loginShort}
             </Link>
-            <MobileMenu links={NAV_LINKS} />
+            <MobileMenu links={navLinks} />
           </div>
         </div>
       </div>

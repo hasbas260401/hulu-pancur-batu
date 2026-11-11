@@ -1,8 +1,8 @@
 'use client'
 
 import { useRef } from 'react'
-import Swal from 'sweetalert2'
 import { Trash2 } from 'lucide-react'
+import { useAlert } from '@/components/ui/alert'
 
 export default function DeleteUserButton({
   id,
@@ -14,19 +14,18 @@ export default function DeleteUserButton({
   action: (formData: FormData) => Promise<void>
 }) {
   const formRef = useRef<HTMLFormElement>(null)
+  const alert = useAlert()
 
   async function confirmDelete() {
-    const result = await Swal.fire({
+    const confirmed = await alert.confirm({
       title: 'Hapus akun ini?',
-      text: `Akun "${username}" akan dihapus permanen dan tidak dapat dikembalikan.`,
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonText: 'Ya, Hapus',
-      cancelButtonText: 'Batal',
-      confirmButtonColor: '#e11d48',
-      customClass: { popup: 'rounded-2xl text-xs' },
+      message: `Akun "${username}" akan dihapus permanen dan tidak dapat dikembalikan.`,
+      type: 'warning',
+      confirmText: 'Ya, Hapus',
+      cancelText: 'Batal',
+      persistent: true,
     })
-    if (result.isConfirmed) formRef.current?.requestSubmit()
+    if (confirmed) formRef.current?.requestSubmit()
   }
 
   return (

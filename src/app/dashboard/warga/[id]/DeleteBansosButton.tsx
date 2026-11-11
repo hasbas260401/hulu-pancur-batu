@@ -1,7 +1,7 @@
 'use client'
 
 import { Trash2 } from 'lucide-react'
-import Swal from 'sweetalert2'
+import { useAlert } from '@/components/ui/alert'
 
 export default function DeleteBansosButton({
   bansosId,
@@ -10,58 +10,32 @@ export default function DeleteBansosButton({
   bansosId: string
   actionServer: (formData: FormData) => Promise<{ success: boolean; message: string }>
 }) {
+  const alert = useAlert()
+
   const handleDelete = async () => {
-    const result = await Swal.fire({
+    const confirmed = await alert.confirm({
       title: 'Hapus Riwayat Bansos?',
-      text: 'Apakah Anda yakin ingin menghapus catatan bantuan sosial ini?',
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#e11d48',
-      cancelButtonColor: '#64748b',
-      confirmButtonText: 'Ya, Hapus!',
-      cancelButtonText: 'Batal',
-      reverseButtons: true,
-      customClass: {
-        popup: 'rounded-2xl text-xs',
-        confirmButton: 'rounded-xl text-xs font-bold px-4 py-2.5',
-        cancelButton: 'rounded-xl text-xs font-bold px-4 py-2.5',
-      },
+      message: 'Apakah Anda yakin ingin menghapus catatan bantuan sosial ini?',
+      type: 'warning',
+      confirmText: 'Ya, Hapus',
+      cancelText: 'Batal',
     })
 
-    if (result.isConfirmed) {
-      const formData = new FormData()
-      formData.append('actionType', 'delete')
-      formData.append('bansosId', bansosId)
+    if (!confirmed) return
 
-      try {
-        const res = await actionServer(formData)
-        if (!res.success) {
-          Swal.fire({
-            title: 'Gagal!',
-            text: res.message,
-            icon: 'error',
-            confirmButtonColor: '#2563eb',
-            customClass: { popup: 'rounded-2xl text-xs' },
-          })
-          return
-        }
-        Swal.fire({
-          title: 'Terhapus!',
-          text: res.message,
-          icon: 'success',
-          timer: 1500,
-          showConfirmButton: false,
-          customClass: { popup: 'rounded-2xl text-xs' },
-        })
-      } catch (error) {
-        Swal.fire({
-          title: 'Gagal!',
-          text: 'Terjadi kesalahan saat menghapus data.',
-          icon: 'error',
-          confirmButtonColor: '#2563eb',
-          customClass: { popup: 'rounded-2xl text-xs' },
-        })
+    const formData = new FormData()
+    formData.append('actionType', 'delete')
+    formData.append('bansosId', bansosId)
+
+    try {
+      const res = await actionServer(formData)
+      if (!res.success) {
+        await alert.error('Gagal', res.message)
+        return
       }
+      await alert.success('Terhapus', res.message)
+    } catch (error) {
+      await alert.error('Gagal', 'Terjadi kesalahan saat menghapus data.')
     }
   }
 

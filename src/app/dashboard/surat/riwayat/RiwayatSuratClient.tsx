@@ -3,6 +3,7 @@
 import { useState, useEffect, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { useAlert } from '@/components/ui/alert'
 import { 
   Download, 
   Trash2, 
@@ -38,6 +39,7 @@ export default function RiwayatSuratClient({
 }) {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const alert = useAlert()
   const [isPending, startTransition] = useTransition()
 
   const [filterType, setFilterType] = useState(searchParams.get('filter') || 'all')
@@ -88,7 +90,7 @@ export default function RiwayatSuratClient({
 
   const handleDownloadExcel = () => {
     if (initialRiwayat.length === 0) {
-      alert('Tidak ada data riwayat untuk di-backup.')
+      alert.info('Tidak Ada Data', 'Belum ada riwayat surat yang dapat di-backup saat ini.')
       return
     }
 
@@ -116,16 +118,26 @@ export default function RiwayatSuratClient({
   }
 
   const handleClearData = async () => {
-    if (confirm('PERINGATAN KERAS!\n\nApakah Anda yakin ingin menghapus SELURUH riwayat surat ini? Tindakan ini biasanya dilakukan saat arsip akhir tahun dan data yang dihapus tidak dapat dikembalikan.')) {
-      setIsDeleting(true)
-      try {
-        await clearAction()
-        alert('Riwayat surat berhasil dibersihkan/diarsip.')
-      } catch (error) {
-        alert('Gagal membersihkan riwayat surat.')
-      } finally {
-        setIsDeleting(false)
-      }
+    const confirmed = await alert.confirm({
+      title: 'Hapus Seluruh Riwayat Surat?',
+      message:
+        'PERINGATAN KERAS!\n\nApakah Anda yakin ingin menghapus SELURUH riwayat surat ini? Tindakan ini biasanya dilakukan saat arsip akhir tahun dan data yang dihapus tidak dapat dikembalikan.',
+      type: 'warning',
+      confirmText: 'Ya, Hapus Semua',
+      cancelText: 'Batal',
+      persistent: true,
+    })
+
+    if (!confirmed) return
+
+    setIsDeleting(true)
+    try {
+      await clearAction()
+      await alert.success('Berhasil', 'Riwayat surat berhasil dibersihkan/diarsip.')
+    } catch (error) {
+      await alert.error('Gagal', 'Riwayat surat gagal dibersihkan. Silakan coba lagi.')
+    } finally {
+      setIsDeleting(false)
     }
   }
 
@@ -271,7 +283,7 @@ export default function RiwayatSuratClient({
                 </tr>
               ) : (
                 initialRiwayat.map((item) => {
-                  const pdfPath = item.filePath ? item.filePath.replace('.docx', '.pdf') : '#'
+                  const pdfPath = `/api/surat/pdf/${item.id}`
 
                   return (
                     <tr key={item.id} className="hover:bg-slate-50/80 transition">

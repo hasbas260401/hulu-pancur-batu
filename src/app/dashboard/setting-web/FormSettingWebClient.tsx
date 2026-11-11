@@ -1,7 +1,9 @@
 'use client'
 
 import { useState, useTransition, useEffect } from 'react'
-import { Save, Globe, User, Target, Video, Loader2, CheckCircle2, AlertCircle, X } from 'lucide-react'
+import { Save, Globe, User, Target, Video, Loader2, CheckCircle2, AlertCircle, X, LayoutTemplate } from 'lucide-react'
+import type { LandingContent } from '@/lib/landing-content'
+import LandingContentEditor from './LandingContentEditor'
 
 export default function FormSettingWebClient({
   initialData,
@@ -12,6 +14,9 @@ export default function FormSettingWebClient({
 }) {
   const [isPending, startTransition] = useTransition()
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
+  const [landingContent, setLandingContent] = useState<LandingContent>(
+    initialData.landingContent
+  )
 
   // Otomatis hilangkan toast setelah 4 detik
   useEffect(() => {
@@ -92,15 +97,6 @@ export default function FormSettingWebClient({
             </div>
           )}
         </div>
-
-        <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-slate-600">Judul Utama (Hero Heading)</label>
-          <input type="text" name="heroTitle" defaultValue={initialData.heroTitle} required className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500" />
-        </div>
-        <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-slate-600">Deskripsi Utama (Hero Description)</label>
-          <textarea name="heroDescription" rows={3} defaultValue={initialData.heroDescription} required className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500" />
-        </div>
       </div>
 
       {/* Profil Kepala Desa & Foto */}
@@ -164,11 +160,29 @@ export default function FormSettingWebClient({
         </div>
       </div>
 
+      {/* Konten Halaman Depan (dinamis dari database) */}
+      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+        <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+          <LayoutTemplate className="w-4 h-4 text-amber-600" /> Konten Halaman Depan Publik
+        </h2>
+        <p className="text-xs text-slate-500">
+          Semua teks, statistik, kontak, jam operasional, layanan, berita, dan
+          informasi anggaran di bawah ini tampil di halaman depan.
+        </p>
+        <input
+          type="hidden"
+          name="landingContent"
+          value={JSON.stringify(landingContent)}
+          readOnly
+        />
+        <LandingContentEditor content={landingContent} onChange={setLandingContent} />
+      </div>
+
       <div className="flex justify-end">
         <button
           type="submit"
           disabled={isPending}
-          className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-md transition inline-flex items-center gap-2 disabled:opacity-50 cursor-pointer"
+          className="px-6 py-3 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs rounded-xl shadow-md transition inline-flex items-center gap-2 disabled:opacity-50 cursor-pointer"
         >
           {isPending ? (
             <>

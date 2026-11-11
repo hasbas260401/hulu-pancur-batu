@@ -117,7 +117,7 @@ async function generateSuratAction(formData: FormData) {
     ? dusunNamaRaw
     : (dusunNamaRaw ? `Dusun ${dusunNamaRaw}` : '')
 
-  const alamatRumah = warga.alamat || warga.kk?.alamat || ''
+  const alamatRumah = warga.kk?.alamat || ''
   const alamatLengkap = alamatRumah
     ? (dusunFormatted ? `${alamatRumah}, ${dusunFormatted}` : alamatRumah)
     : (dusunFormatted || '-')

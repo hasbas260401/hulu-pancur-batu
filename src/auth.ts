@@ -1,4 +1,4 @@
-import NextAuth from 'next-auth'
+import NextAuth, { CredentialsSignin } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
@@ -9,6 +9,48 @@ const prisma = new PrismaClient()
 
 const MAX_GAGAL = 5 // salah password 5x berturut-turut -> akun dikunci sementara
 const KUNCI_MENIT = 15
+
+/**
+ * Kode kesalahan login yang aman dikirim ke halaman login.
+ * Pesan asli tetap dicatat di server, sedangkan klien hanya menerima kode
+ * singkat agar bisa menampilkan pesan yang jelas dan konsisten.
+ */
+class LoginError extends CredentialsSignin {
+  constructor(code: string) {
+    super()
+    this.code = code
+  }
+}
+
+class InvalidCredentialsError extends LoginError {
+  constructor() {
+    super('invalid_credentials')
+  }
+}
+
+class AccountInactiveError extends LoginError {
+  constructor() {
+    super('account_inactive')
+  }
+}
+
+class AccountLockedError extends LoginError {
+  constructor() {
+    super('account_locked')
+  }
+}
+
+class TooManyAttemptsError extends LoginError {
+  constructor() {
+    super('too_many_attempts')
+  }
+}
+
+class MissingFieldsError extends LoginError {
+  constructor() {
+    super('missing_fields')
+  }
+}
 
 // Hash cadangan: bcrypt tetap dijalankan walau username tidak ada, supaya waktu respons
 // tidak membocorkan apakah sebuah username terdaftar
@@ -30,35 +72,32 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       },
       async authorize(credentials, request) {
         if (!credentials?.username || !credentials?.password) {
-          return null
+          throw new MissingFieldsError()
         }
 
         const username = String(credentials.username).trim()
         const password = String(credentials.password)
 
-        // Batasi percobaan per alamat IP (dilewati bila IP tidak diketahui agar tidak jadi satu kelompok bersama)
         const ip = request ? clientIp(request) : 'unknown'
         if (ip !== 'unknown') {
           const rl = rateLimit(`login-ip:${ip}`, 20, 15 * 60 * 1000)
-          if (!rl.ok) return null
+          if (!rl.ok) throw new TooManyAttemptsError()
         }
 
-        // Cari user berdasarkan username di database (beserta data relasinya)
         const user = await prisma.user.findUnique({
           where: { username },
           include: { dusun: true, warga: true },
         })
 
-        // Selalu jalankan bcrypt (lihat DUMMY_HASH di atas)
         const isPasswordValid = await bcrypt.compare(password, user?.passwordHash ?? DUMMY_HASH)
 
         if (!user || !user.passwordHash) {
-          return null
+          throw new InvalidCredentialsError()
         }
 
-        // Akun sedang dikunci karena terlalu banyak salah password
+        // Akun sedang dikunci
         if (user.lockedUntil && user.lockedUntil > new Date()) {
-          return null
+          throw new AccountLockedError()
         }
 
         if (!isPasswordValid) {
@@ -70,21 +109,20 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                 ? { failedLogin: 0, lockedUntil: new Date(Date.now() + KUNCI_MENIT * 60 * 1000) }
                 : { failedLogin: gagal },
           })
-          return null
+          throw new InvalidCredentialsError()
         }
 
-        // Password benar, tetapi akun belum/tidak aktif (menunggu verifikasi, ditolak, atau dinonaktifkan)
+        // Akun belum aktif / pending / non-aktif
         if (!isActiveStatus(user.statusAkun)) {
-          return null
+          throw new AccountInactiveError()
         }
 
-        // Login berhasil: reset penghitung gagal dan catat waktu login
+        // Login berhasil: reset counter dan catat sesi
         await prisma.user.update({
           where: { id: user.id },
           data: { failedLogin: 0, lockedUntil: null, lastLoginAt: new Date() },
         })
 
-        // Catat sesi perangkat ke database
         const userAgent = request?.headers?.get('user-agent') || 'Tidak diketahui'
         const forwarded = request?.headers?.get('x-forwarded-for')
         const ipAddress =
@@ -98,11 +136,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             token: crypto.randomUUID(),
             userAgent,
             ipAddress,
-            expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 hari
+            expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
           },
         })
 
-        // Kembalikan data user termasuk permissions agar masuk ke token JWT
         return {
           id: user.id,
           name: user.warga?.nama || user.username,

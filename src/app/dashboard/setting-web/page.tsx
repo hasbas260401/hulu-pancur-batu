@@ -1,8 +1,9 @@
-import { PrismaClient } from '@prisma/client'
+import { Prisma, PrismaClient } from '@prisma/client'
 import { revalidatePath } from 'next/cache'
 import { connection } from 'next/server'
 import { Suspense } from 'react'
 import FormSettingWebClient from './FormSettingWebClient'
+import { getLandingContent } from '@/lib/landing-content'
 import fs from 'fs/promises'
 import path from 'path'
 
@@ -14,14 +15,29 @@ async function updateWebSettingsAction(formData: FormData) {
 
   const namaDesa = formData.get('namaDesa') as string
   const sloganDesa = formData.get('sloganDesa') as string
-  const heroTitle = formData.get('heroTitle') as string
-  const heroDescription = formData.get('heroDescription') as string
   const namaKades = formData.get('namaKades') as string
   const periodeKades = formData.get('periodeKades') as string
   const visiDesa = formData.get('visiDesa') as string
   const misiDesa = formData.get('misiDesa') as string
   const youtubeUrl = formData.get('youtubeUrl') as string
-  
+  const landingContentRaw = formData.get('landingContent') as string | null
+
+  let landingContent: Prisma.InputJsonValue | undefined
+  if (landingContentRaw) {
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(landingContentRaw)
+    } catch {
+      throw new Error('Format konten halaman depan tidak valid. Silakan muat ulang halaman lalu coba lagi.')
+    }
+
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      throw new Error('Format konten halaman depan tidak valid.')
+    }
+
+    landingContent = parsed as Prisma.InputJsonValue
+  }
+
   const fotoFile = formData.get('fotoKades') as File
   const logoFile = formData.get('logoDesa') as File
 
@@ -53,18 +69,17 @@ async function updateWebSettingsAction(formData: FormData) {
     logoDesaUrl = `/uploads/${fileName}`
   }
 
-  let setting = await prisma.webSettings.findFirst()
+  const setting = await prisma.webSettings.findFirst()
 
   const dataPayload = {
     namaDesa,
     sloganDesa,
-    heroTitle,
-    heroDescription,
     namaKades,
     periodeKades,
     visiDesa,
     misiDesa,
     youtubeUrl,
+    ...(landingContent !== undefined ? { landingContent } : {}),
     ...(fotoKadesUrl ? { fotoKades: fotoKadesUrl } : {}),
     ...(logoDesaUrl ? { logoDesa: logoDesaUrl } : {}),
   }
@@ -99,20 +114,20 @@ export default function KelolaKontenWebPage() {
 async function KelolaKontenContent() {
   await connection()
 
-  let setting = await prisma.webSettings.findFirst()
+  const setting = await prisma.webSettings.findFirst()
 
-  const defaultSetting = setting || {
+  const defaultSetting = {
     namaDesa: 'Desa Hulu Pancur Batu',
     sloganDesa: 'Sistem Informasi Desa',
     logoDesa: null,
-    heroTitle: 'Transparan, Akuntabel, & Melayani Sepenuh Hati.',
-    heroDescription: 'Website resmi administrasi kependudukan dan transparansi penyaluran bantuan sosial Desa Hulu Pancur Batu untuk mewujudkan tata kelola pemerintahan desa yang modern.',
     namaKades: 'Kepala Desa Hulu Pancur Batu',
     periodeKades: 'Periode 2023 - 2029',
     fotoKades: null,
     visiDesa: 'Terwujudnya Desa Hulu Pancur Batu yang Mandiri, Religius, Sejahtera, Transparan, dan Berbasis Teknologi Informasi dalam Pelayanan Publik.',
     misiDesa: 'Meningkatkan kualitas pelayanan administrasi kependudukan yang cepat, transparan, dan bebas pungutan liar.\nMengoptimalkan penyaluran bantuan sosial agar tepat sasaran kepada warga yang berhak secara adil.\nMemajukan infrastruktur desa serta menggerakkan ekonomi kerakyatan berbasis potensi lokal.',
     youtubeUrl: 'https://www.youtube.com/embed/VUZlZm5V9R8',
+    ...(setting ?? {}),
+    landingContent: getLandingContent(setting),
   }
 
   return (

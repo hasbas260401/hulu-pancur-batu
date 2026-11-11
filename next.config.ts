@@ -12,7 +12,7 @@ const nextConfig: NextConfig = {
     },
   },
   allowedDevOrigins: [
-  "192.168.1.3",
+  "192.168.100.4",
   "judiciary-paralegal-debtor.ngrok-free.dev",
   // atau pakai wildcard supaya tidak perlu ganti tiap ngrok restart:
   "*.ngrok-free.dev",

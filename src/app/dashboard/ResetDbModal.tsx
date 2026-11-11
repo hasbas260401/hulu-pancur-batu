@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { AlertTriangle, ShieldAlert, Loader2, CheckCircle2 } from 'lucide-react'
+import { useAlert } from '@/components/ui/alert'
 
 const KONFIRMASI_TEKS = 'HAPUS SEMUA DATA'
 
@@ -13,6 +14,7 @@ export default function ResetDbModal() {
   const [loading, setLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
   const router = useRouter()
+  const alert = useAlert()
 
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -32,7 +34,7 @@ export default function ResetDbModal() {
         throw new Error(data.error || 'Gagal mereset database')
       }
 
-      alert('✅ ' + data.message)
+      await alert.success('Berhasil', data.message)
       setIsOpen(false)
       setPassword('')
       setKonfirmasi('')

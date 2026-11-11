@@ -1,4 +1,4 @@
-import { PrismaClient, StatusWarga } from '@prisma/client'
+import { PrismaClient } from '@prisma/client'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { connection } from 'next/server'
@@ -14,6 +14,8 @@ import {
   UserX, 
   ArrowRightLeft
 } from 'lucide-react'
+
+type StatusWarga = 'AKTIF' | 'MENINGGAL' | 'PINDAH'
 
 const prisma = new PrismaClient()
 
@@ -119,7 +121,7 @@ async function WargaContent({
     bansosCondition = {
       some: {
         program: { contains: bantuan, mode: 'insensitive' as const },
-        status: 'AKTIF',
+        status: 'AKTIF' as const,
       },
     }
   }

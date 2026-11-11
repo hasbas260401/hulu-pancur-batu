@@ -23,12 +23,27 @@ export default function LoginFormClient({ logoDesa }: { logoDesa?: string }) {
         password,
       })
 
-      if (result?.ok) {
-        // PERBAIKAN UTAMA: Menggunakan window.location.origin secara dinamis 
-        // agar ikut dengan domain aktif (baik Ngrok maupun Localhost)
+      // Penting: NextAuth mengembalikan HTTP 200 (ok: true) walaupun kredensial
+      // salah. Pada kasus itu `error`/`code` tetap terisi dan `url` bernilai
+      // null. Karena itu keberhasilan harus dicek dari `error`, bukan `ok`.
+      if (result?.ok && !result?.error) {
         window.location.href = `${window.location.origin}/dashboard`
       } else {
-        setError('Username/NIK atau Password salah, atau akun belum aktif.')
+        // auth.ts mengirim kode kesalahan yang spesifik lewat parameter `code`.
+        // Jika kode tidak dikenali, tampilkan pesan umum yang jelas.
+        const code = (result as { code?: string } | undefined)?.code
+        const messages: Record<string, string> = {
+          invalid_credentials: 'Password atau username salah.',
+          account_inactive:
+            'Akun Anda belum aktif. Hubungi Admin atau Kepala Dusun untuk proses verifikasi.',
+          account_locked:
+            'Akun dikunci sementara karena terlalu banyak percobaan. Coba lagi dalam 15 menit.',
+          too_many_attempts:
+            'Terlalu banyak percobaan login. Silakan coba lagi beberapa saat lagi.',
+          missing_fields: 'Username dan password wajib diisi.',
+        }
+
+        setError(messages[code ?? ''] ?? 'Password atau username salah.')
         setLoading(false)
       }
     } catch (err) {
@@ -40,51 +55,49 @@ export default function LoginFormClient({ logoDesa }: { logoDesa?: string }) {
 
   return (
     <>
-      {/* Background */}
+      {/* Background bersih sesuai pedoman DESIGN.md */}
       <div
-        className="fixed inset-0 z-0 overflow-hidden bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 pointer-events-none"
+        className="fixed inset-0 z-0 overflow-hidden bg-slate-50 pointer-events-none"
         aria-hidden="true"
       >
-        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#3b82f6_1px,transparent_1px)] [background-size:16px_16px]"></div>
-        <div className="absolute -top-24 -left-24 w-72 h-72 sm:w-96 sm:h-96 bg-blue-500/20 rounded-full blur-3xl"></div>
-        <div className="absolute -bottom-24 -right-24 w-72 h-72 sm:w-96 sm:h-96 bg-indigo-500/20 rounded-full blur-3xl"></div>
+        <div className="absolute inset-0 opacity-[0.03] bg-[radial-gradient(#10b981_1px,transparent_1px)] [background-size:24px_24px]"></div>
       </div>
 
-      <div className="relative z-10 min-h-screen min-h-[100dvh] flex items-center justify-center p-4 sm:p-6">
+      <div className="relative z-10 min-h-screen min-h-[100dvh] flex items-center justify-center p-4 sm:p-6 font-[family-name:var(--font-geist-sans)]">
         <div className="w-full max-w-5xl">
 
           {/* Main Card */}
-          <div className="bg-white rounded-2xl shadow-2xl shadow-black/30 border border-white/20 overflow-hidden grid grid-cols-1 lg:grid-cols-12">
+          <div className="bg-white rounded-2xl shadow-xl border border-slate-200/80 overflow-hidden grid grid-cols-1 lg:grid-cols-12">
 
             {/* Panel Kiri */}
-            <div className="lg:col-span-5 bg-gradient-to-br from-blue-900 via-blue-800 to-slate-900 p-8 sm:p-10 flex flex-col justify-between text-white relative overflow-hidden">
+            <div className="lg:col-span-5 bg-gradient-to-br from-emerald-950 via-emerald-900 to-slate-900 p-8 sm:p-10 flex flex-col justify-between text-white relative overflow-hidden">
 
-              <div className="absolute -top-24 -left-24 w-72 h-72 bg-blue-600/30 rounded-full blur-3xl pointer-events-none"></div>
-              <div className="absolute -bottom-24 -right-24 w-72 h-72 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none"></div>
+              <div className="absolute -top-24 -left-24 w-72 h-72 bg-emerald-600/20 rounded-full blur-3xl pointer-events-none"></div>
+              <div className="absolute -bottom-24 -right-24 w-72 h-72 bg-teal-500/20 rounded-full blur-3xl pointer-events-none"></div>
 
               <div className="space-y-3 relative z-10">
-                <span className="px-3.5 py-1 bg-blue-500/30 border border-blue-400/30 rounded-full text-xs font-semibold tracking-wider uppercase text-blue-200">
+                <span className="px-3.5 py-1 bg-emerald-500/20 border border-emerald-400/30 rounded-full text-xs font-semibold tracking-wider uppercase text-emerald-200">
                   Portal Resmi Desa
                 </span>
 
-                <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+                <h2 className="font-[family-name:var(--font-display)] text-2xl sm:text-3xl font-semibold tracking-tight text-white">
                   SIDU Desa Hulu Pancur Batu
                 </h2>
               </div>
 
               <div className="space-y-4 my-8 relative z-10">
                 <div className="p-4 bg-white/10 backdrop-blur-md rounded-xl border border-white/10 space-y-1.5">
-                  <p className="text-sm font-semibold text-blue-100">
+                  <p className="text-sm font-semibold text-emerald-100">
                     Layanan Administrasi & Kependudukan
                   </p>
 
-                  <p className="text-xs text-blue-200/80 leading-relaxed">
+                  <p className="text-xs text-emerald-200/80 leading-relaxed">
                     Sistem informasi terpadu untuk memudahkan warga dalam pengurusan surat dan layanan desa secara cepat dan transparan.
                   </p>
                 </div>
               </div>
 
-              <div className="text-xs text-blue-300/70 relative z-10">
+              <div className="text-xs text-emerald-300/70 relative z-10">
                 Pemerintah Desa Hulu Pancur Batu &copy; 2026
               </div>
             </div>
@@ -95,7 +108,7 @@ export default function LoginFormClient({ logoDesa }: { logoDesa?: string }) {
 
                 {/* Logo dan Judul */}
                 <div className="text-center space-y-2">
-                  <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 flex items-center justify-center mx-auto shadow-md p-1.5 overflow-hidden">
+                  <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 flex items-center justify-center mx-auto shadow-sm p-1.5 overflow-hidden">
 
                     {logoDesa ? (
                       <img
@@ -110,7 +123,7 @@ export default function LoginFormClient({ logoDesa }: { logoDesa?: string }) {
                   </div>
 
                   <div className="space-y-0.5">
-                    <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
+                    <h1 className="font-[family-name:var(--font-display)] text-xl sm:text-2xl font-semibold text-slate-900 tracking-tight">
                       Masuk ke Akun
                     </h1>
 
@@ -124,6 +137,7 @@ export default function LoginFormClient({ logoDesa }: { logoDesa?: string }) {
                 {error && (
                   <div
                     role="alert"
+                    aria-live="assertive"
                     className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-sm rounded-xl flex items-start gap-3"
                   >
                     <span className="text-base leading-5 shrink-0">⚠️</span>
@@ -142,7 +156,7 @@ export default function LoginFormClient({ logoDesa }: { logoDesa?: string }) {
                   <div className="space-y-1">
                     <label
                       htmlFor="username"
-                      className="block text-sm font-semibold text-slate-700"
+                      className="block text-sm font-medium text-slate-900"
                     >
                       Username / NIK
                     </label>
@@ -177,7 +191,7 @@ export default function LoginFormClient({ logoDesa }: { logoDesa?: string }) {
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
                         placeholder="Masukkan username atau NIK"
-                        className="w-full h-11 pl-11 pr-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-600 focus:border-blue-600 focus:bg-white focus:outline-none text-slate-800 text-base sm:text-sm placeholder:text-slate-400 transition"
+                        className="w-full h-11 pl-11 pr-4 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-600/20 focus:border-emerald-600 focus:bg-white focus:outline-none text-slate-900 text-base sm:text-sm placeholder:text-slate-400 transition"
                       />
                     </div>
                   </div>
@@ -187,14 +201,14 @@ export default function LoginFormClient({ logoDesa }: { logoDesa?: string }) {
                     <div className="flex items-center justify-between">
                       <label
                         htmlFor="password"
-                        className="block text-sm font-semibold text-slate-700"
+                        className="block text-sm font-medium text-slate-900"
                       >
                         Password
                       </label>
 
                       <Link
                         href="/forgot-password"
-                        className="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline transition"
+                        className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 hover:underline transition"
                       >
                         Lupa Password?
                       </Link>
@@ -228,7 +242,7 @@ export default function LoginFormClient({ logoDesa }: { logoDesa?: string }) {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder="••••••••"
-                        className="w-full h-11 pl-11 pr-12 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-600 focus:border-blue-600 focus:bg-white focus:outline-none text-slate-800 text-base sm:text-sm placeholder:text-slate-400 transition"
+                        className="w-full h-11 pl-11 pr-12 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-600/20 focus:border-emerald-600 focus:bg-white focus:outline-none text-slate-900 text-base sm:text-sm placeholder:text-slate-400 transition"
                       />
 
                       {/* Tombol tampilkan password */}
@@ -278,7 +292,7 @@ export default function LoginFormClient({ logoDesa }: { logoDesa?: string }) {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full h-11 bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white font-bold text-sm rounded-xl shadow-lg shadow-blue-600/30 transition duration-200 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-2 mt-2"
+                    className="w-full h-11 bg-emerald-700 hover:bg-emerald-800 active:scale-[0.99] text-white font-semibold text-sm rounded-xl shadow-sm transition duration-200 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-2 mt-2"
                   >
                     {loading ? (
                       <>
@@ -317,7 +331,7 @@ export default function LoginFormClient({ logoDesa }: { logoDesa?: string }) {
 
                   <Link
                     href="/register"
-                    className="px-4 py-2 text-sm font-bold text-blue-600 bg-blue-50 border border-blue-200 hover:bg-blue-100 hover:border-blue-300 rounded-xl transition cursor-pointer shrink-0 text-center"
+                    className="px-4 py-2 text-sm font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 hover:border-emerald-300 rounded-xl transition cursor-pointer shrink-0 text-center"
                   >
                     Daftar Akun
                   </Link>

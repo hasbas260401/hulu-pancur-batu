@@ -13,7 +13,7 @@ import {
   ChevronRight
 } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
-import Swal from 'sweetalert2'
+import { useAlert } from '@/components/ui/alert'
 import { hapusWargaAction, updateStatusWargaAction } from './actions'
 
 interface WargaProps {
@@ -21,39 +21,36 @@ interface WargaProps {
   nik: string
   nama: string
   jenisKelamin: string
-  tempatLahir: string
+  tempatLahir: string | null
   tanggalLahir: string | Date
-  agama: string
-  pekerjaan: string
+  agama: string | null
+  pekerjaan: string | null
   statusWarga: string
   hubunganKeluarga?: string | null
   statusPerkawinan?: string | null
   dusunId?: number | null
-  dusun?: { id: number; namaDusun: string } | null
+  dusun?: { id: number; nama: string } | null
   kk?: { 
     noKk: string
     dusunId?: number | null
-    dusun?: { id: number; namaDusun: string } | null 
+    dusun?: { id: number; nama: string } | null
   } | null
 }
 
-function formatDusunRomawi(namaDusunRaw?: string, fallbackId?: number | null): string {
-  const text = (namaDusunRaw || '').trim().toUpperCase()
-
-  if (text.includes('I') || text.endsWith('1') || fallbackId === 1) return 'I'
-  if (text.includes('II') || text.endsWith('2') || fallbackId === 2) return 'II'
-  if (text.includes('III') || text.endsWith('3') || fallbackId === 3) return 'III'
-  if (text.includes('IV') || text.endsWith('4') || fallbackId === 4) return 'IV'
-  if (text.includes('V') || text.endsWith('5') || fallbackId === 5) return 'V'
-
-  const angkaMatch = text.match(/\d+/)
-  if (angkaMatch) {
-    const num = parseInt(angkaMatch[0], 10)
-    const mapRomawi: { [key: number]: string } = { 1: 'I', 2: 'II', 3: 'III', 4: 'IV', 5: 'V', 6: 'VI' }
-    if (mapRomawi[num]) return mapRomawi[num]
-  }
-
-  return 'II'
+/**
+ * Nama dusun ditampilkan apa adanya dari relasi `Warga.dusun` (mis. "Dusun II").
+ *
+ * Sebelumnya ada fungsi yang menebak angka Romawi dari nama dusun, tetapi
+ * memakai `text.includes('I')`. Karena "Dusun II"/"III"/"IV" semuanya memuat
+ * huruf "I", hasilnya selalu "I" walau `dusunId` sudah benar. Sumber
+ * kebenaran tetap relasi database, bukan tebakan dari teks.
+ */
+function formatDusun(
+  dusun: { nama?: string | null } | null | undefined,
+  fallbackDusun?: { nama?: string | null } | null
+): string {
+  const nama = (dusun?.nama || fallbackDusun?.nama || '').trim()
+  return nama || '-'
 }
 
 export default function TabelWargaClient({
@@ -64,6 +61,7 @@ export default function TabelWargaClient({
   totalInitialFiltered: number
 }) {
   const searchParams = useSearchParams()
+  const alert = useAlert()
   const [dataWarga, setDataWarga] = useState<WargaProps[]>(initialData)
   const [totalFiltered, setTotalFiltered] = useState<number>(totalInitialFiltered)
   const [currentPage, setCurrentPage] = useState<number>(1)
@@ -120,54 +118,33 @@ export default function TabelWargaClient({
     setAlasanPindah('')
   }
 
-  // Fungsi handle hapus warga dengan SweetAlert2
+  // Fungsi handle hapus warga
   const handleDeleteWarga = async (warga: WargaProps) => {
-    const result = await Swal.fire({
+    const confirmed = await alert.confirm({
       title: 'Hapus Data Warga?',
-      text: `Apakah Anda yakin ingin menghapus data warga atas nama ${warga.nama}? Tindakan ini tidak dapat dibatalkan.`,
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#e11d48',
-      cancelButtonColor: '#64748b',
-      confirmButtonText: 'Ya, Hapus!',
-      cancelButtonText: 'Batal',
-      reverseButtons: true,
-      customClass: {
-        popup: 'rounded-2xl text-xs',
-        confirmButton: 'rounded-xl text-xs font-bold px-4 py-2.5',
-        cancelButton: 'rounded-xl text-xs font-bold px-4 py-2.5',
-      }
+      message: `Apakah Anda yakin ingin menghapus data warga atas nama ${warga.nama}? Tindakan ini tidak dapat dibatalkan.`,
+      type: 'warning',
+      confirmText: 'Ya, Hapus',
+      cancelText: 'Batal',
+      persistent: true,
     })
 
-    if (result.isConfirmed) {
-      setDeletingId(warga.id)
+    if (!confirmed) return
 
-      try {
-        const res = await hapusWargaAction(warga.id)
-        if (!res.success) throw new Error(res.message)
-        
-        Swal.fire({
-          title: 'Berhasil!',
-          text: 'Data warga berhasil dihapus dari sistem.',
-          icon: 'success',
-          timer: 1500,
-          showConfirmButton: false,
-          customClass: { popup: 'rounded-2xl text-xs' }
-        })
+    setDeletingId(warga.id)
 
-        // Refresh data pada halaman aktif
-        fetchWargaData(currentPage)
-      } catch (error: any) {
-        Swal.fire({
-          title: 'Gagal!',
-          text: error.message || 'Gagal menghapus data warga.',
-          icon: 'error',
-          confirmButtonColor: '#2563eb',
-          customClass: { popup: 'rounded-2xl text-xs' }
-        })
-      } finally {
-        setDeletingId(null)
-      }
+    try {
+      const res = await hapusWargaAction(warga.id)
+      if (!res.success) throw new Error(res.message)
+
+      await alert.success('Berhasil', 'Data warga berhasil dihapus dari sistem.')
+
+      // Refresh data pada halaman aktif
+      fetchWargaData(currentPage)
+    } catch (error: any) {
+      await alert.error('Gagal', error.message || 'Gagal menghapus data warga.')
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -206,9 +183,8 @@ export default function TabelWargaClient({
                 </tr>
               ) : (
                 dataWarga.map((warga) => {
-                  const rawDusun = warga.dusun?.namaDusun || warga.kk?.dusun?.namaDusun
-                  const fallbackId = warga.dusunId || warga.kk?.dusunId
-                  const dusunRomawi = formatDusunRomawi(rawDusun, fallbackId)
+                  // Nama dusun diambil dari relasi dusunId, bukan ditebak dari teks.
+                  const namaDusun = formatDusun(warga.dusun, warga.kk?.dusun)
 
                   const status = (warga.statusWarga || 'AKTIF').toUpperCase()
                   let badgeClass = 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
@@ -249,7 +225,7 @@ export default function TabelWargaClient({
                       <td className="py-3 px-4">{warga.pekerjaan || '-'}</td>
                       <td className="py-3 px-4 text-center">
                         <span className="inline-block px-2.5 py-1 bg-slate-100 text-slate-800 font-extrabold rounded-md text-[11px]">
-                          {dusunRomawi}
+                          {namaDusun}
                         </span>
                       </td>
                       <td className="py-3 px-4 text-center">
@@ -336,19 +312,13 @@ export default function TabelWargaClient({
               try {
                 const res = await updateStatusWargaAction(formData)
                 if (!res.success) {
-                  Swal.fire({
-                    title: 'Gagal!',
-                    text: res.message,
-                    icon: 'error',
-                    confirmButtonColor: '#2563eb',
-                    customClass: { popup: 'rounded-2xl text-xs' },
-                  })
+                  await alert.error('Gagal', res.message)
                 } else {
                   setActiveModalWarga(null)
                   fetchWargaData(currentPage)
                 }
               } catch (err) {
-                alert('Gagal mengubah status warga.')
+                await alert.error('Gagal', 'Gagal mengubah status warga.')
               } finally {
                 setIsSubmitting(false)
               }

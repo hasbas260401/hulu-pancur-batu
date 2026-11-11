@@ -1,15 +1,27 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { usePathname } from 'next/navigation'
 import { Download, X, Smartphone, Share } from 'lucide-react'
 
 export default function InstallPWABanner() {
+  const pathname = usePathname()
+  const isPublicLanding = pathname === '/'
+
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null)
   const [showBanner, setShowBanner] = useState(false)
   const [isIOS, setIsIOS] = useState(false)
   const [showIOSInstruction, setShowIOSInstruction] = useState(false)
 
   useEffect(() => {
+    // Banner install hanya untuk pengunjung halaman depan publik.
+    // Area admin/dashboard dan halaman autentikasi tidak boleh menampilkannya.
+    if (!isPublicLanding) {
+      setShowBanner(false)
+      setShowIOSInstruction(false)
+      return
+    }
+
     // Pengecekan perangkat iOS (iPhone/iPad)
     const userAgent = window.navigator.userAgent.toLowerCase()
     const isIosDevice = /iphone|ipad|ipod/.test(userAgent)
@@ -38,7 +50,7 @@ export default function InstallPWABanner() {
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
     }
-  }, [])
+  }, [isPublicLanding])
 
   const handleInstallClick = async () => {
     if (isIOS) {

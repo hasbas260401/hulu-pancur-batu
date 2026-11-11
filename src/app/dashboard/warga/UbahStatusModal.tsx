@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { CheckCircle2, UserX, ArrowRightLeft, Loader2 } from 'lucide-react'
+import { useAlert } from '@/components/ui/alert'
 
 interface UbahStatusModalProps {
   warga: {
@@ -17,6 +18,7 @@ interface UbahStatusModalProps {
 
 export default function UbahStatusModal({ warga, isOpen, onClose }: UbahStatusModalProps) {
   const router = useRouter()
+  const alert = useAlert()
   const [statusBaru, setStatusBaru] = useState<string>(warga.statusWarga || 'AKTIF')
   const [loading, setLoading] = useState(false)
 
@@ -52,7 +54,7 @@ export default function UbahStatusModal({ warga, isOpen, onClose }: UbahStatusMo
       onClose()
       router.refresh()
     } catch (err: any) {
-      alert(err.message || 'Terjadi kesalahan')
+      await alert.error('Gagal', err.message || 'Terjadi kesalahan saat memperbarui status warga.')
     } finally {
       setLoading(false)
     }

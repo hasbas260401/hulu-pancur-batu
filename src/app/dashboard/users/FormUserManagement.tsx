@@ -22,7 +22,7 @@ import {
 
 interface Dusun {
   id: number;
-  nomor: string;
+  nomor: number;
   nama?: string;
 }
 

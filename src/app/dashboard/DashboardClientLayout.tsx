@@ -144,18 +144,18 @@ export default function DashboardClientLayout({
   })()
 
   return (
-    <div className="flex flex-col md:flex-row h-screen w-screen overflow-hidden bg-slate-100 font-sans">
+    <div className="flex flex-col md:flex-row h-screen w-screen overflow-hidden bg-gradient-to-br from-emerald-50 via-slate-50 to-teal-50 font-sans">
       
       {/* TOP HEADER MOBILE */}
-      <div className="flex items-center justify-between border-b border-slate-800 bg-slate-900 px-4 py-3 text-white md:hidden shrink-0 z-30">
+      <div className="flex items-center justify-between border-b border-emerald-900/50 bg-gradient-to-r from-emerald-950 via-emerald-900 to-slate-900 px-4 py-3 text-white md:hidden shrink-0 z-30">
         <div>
           <h2 className="text-sm font-bold">Desa Hulu Pancur Batu</h2>
-          <p className="text-[10px] text-slate-400">Sistem Administrasi Desa</p>
+          <p className="text-[10px] text-emerald-200/70">Sistem Administrasi Desa</p>
         </div>
         <button
           type="button"
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-          className="rounded-lg p-2 text-slate-300 hover:bg-slate-800 hover:text-white cursor-pointer"
+          className="rounded-lg p-2 text-emerald-100/80 hover:bg-white/10 hover:text-white cursor-pointer"
         >
           {isSidebarOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
         </button>
@@ -171,23 +171,23 @@ export default function DashboardClientLayout({
 
       {/* SIDEBAR UTAMA */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex h-full w-64 flex-col border-r border-slate-800 bg-slate-900 text-slate-300 transition-transform duration-300 ease-in-out md:sticky md:top-0 md:translate-x-0 shrink-0 ${
+        className={`fixed inset-y-0 left-0 z-50 flex h-full w-64 flex-col border-r border-emerald-900/50 bg-gradient-to-b from-emerald-950 via-emerald-900 to-slate-900 text-emerald-50/80 transition-transform duration-300 ease-in-out md:sticky md:top-0 md:translate-x-0 shrink-0 ${
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="flex items-center justify-between border-b border-slate-800 p-5 shrink-0">
+        <div className="flex items-center justify-between border-b border-white/10 p-5 shrink-0">
           <div>
             <h2 className="text-base font-bold text-white">
               {role === 'WARGA' ? 'SIDU Warga' : 'Desa Hulu Pancur Batu'}
             </h2>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-emerald-200/70">
               {role === 'WARGA' ? 'Portal Layanan Penduduk' : 'Sistem Administrasi Desa'}
             </p>
           </div>
           <button
             type="button"
             onClick={() => setIsSidebarOpen(false)}
-            className="rounded-lg text-slate-400 hover:text-white md:hidden"
+            className="rounded-lg text-emerald-100/70 hover:text-white md:hidden"
           >
             <X className="h-5 w-5" />
           </button>
@@ -196,7 +196,7 @@ export default function DashboardClientLayout({
         {/* Navigasi Menu */}
         <nav className="flex-1 space-y-1.5 overflow-y-auto p-4">
           {menuList.length === 0 ? (
-            <div className="p-3 text-center text-xs text-slate-500 bg-slate-950/30 rounded-xl border border-slate-800">
+            <div className="p-3 text-center text-xs text-emerald-100/60 bg-black/20 rounded-xl border border-white/10">
               Tidak ada akses menu. Silakan hubungi Administrator.
             </div>
           ) : (
@@ -211,8 +211,8 @@ export default function DashboardClientLayout({
                       onClick={() => setIsSuratOpen(!isSuratOpen)}
                       className={`w-full flex items-center justify-between rounded-xl px-3.5 py-2.5 text-xs font-semibold transition cursor-pointer ${
                         isSuratActive
-                          ? 'bg-blue-600/10 text-blue-400 border border-blue-600/30'
-                          : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                          ? 'bg-emerald-500/15 text-emerald-100 border border-emerald-400/30'
+                          : 'text-emerald-100/70 hover:bg-white/10 hover:text-white'
                       }`}
                     >
                       <div className="flex items-center gap-3">
@@ -223,7 +223,7 @@ export default function DashboardClientLayout({
                     </button>
 
                     {isSuratOpen && (
-                      <div className="pl-4 space-y-1 pt-1 border-l-2 border-slate-800 ml-4">
+                      <div className="pl-4 space-y-1 pt-1 border-l-2 border-white/10 ml-4">
                         {((menu as any).subMenus ?? []).map((sub: any) => {
                           const isSubActive = pathname === sub.href
                           return (
@@ -233,8 +233,8 @@ export default function DashboardClientLayout({
                               onClick={() => setIsSidebarOpen(false)}
                               className={`flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold transition ${
                                 isSubActive
-                                  ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/30'
-                                  : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                                  ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-900/40'
+                                  : 'text-emerald-100/70 hover:bg-white/10 hover:text-white'
                               }`}
                             >
                               <span>{sub.icon}</span>
@@ -259,8 +259,8 @@ export default function DashboardClientLayout({
                   onClick={() => setIsSidebarOpen(false)}
                   className={`flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-xs font-semibold transition ${
                     isActive
-                      ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/30'
-                      : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                      ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-900/40'
+                      : 'text-emerald-100/70 hover:bg-white/10 hover:text-white'
                   }`}
                 >
                   <span className="text-base">{menu.icon}</span>
@@ -272,14 +272,14 @@ export default function DashboardClientLayout({
         </nav>
 
         {/* Footer Sidebar */}
-        <div className="flex items-center justify-between gap-2 border-t border-slate-800 bg-slate-950/40 p-4 shrink-0 mt-auto">
+        <div className="flex items-center justify-between gap-2 border-t border-white/10 bg-black/20 p-4 shrink-0 mt-auto">
           <div className="flex items-center gap-3 overflow-hidden">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-xs font-bold text-white">
               {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
             </div>
             <div className="overflow-hidden">
               <div className="truncate text-xs font-bold text-white">{user?.name || 'Pengguna Desa'}</div>
-              <div className="truncate text-[10px] font-semibold uppercase text-slate-400">
+              <div className="truncate text-[10px] font-semibold uppercase text-emerald-200/60">
                 {role === 'KADUS' 
                   ? `Kadus ${user?.dusunNama || ''}` 
                   : role === 'ADMIN' 
@@ -292,7 +292,7 @@ export default function DashboardClientLayout({
           <button
             type="button"
             onClick={() => setShowLogoutModal(true)}
-            className="flex shrink-0 items-center justify-center rounded-lg bg-slate-800 p-2 text-slate-400 transition-colors hover:bg-rose-600 hover:text-white cursor-pointer"
+            className="flex shrink-0 items-center justify-center rounded-lg bg-white/10 p-2 text-emerald-100/70 transition-colors hover:bg-rose-600 hover:text-white cursor-pointer"
             title="Keluar"
           >
             <LogOut className="w-4 h-4" />
@@ -301,7 +301,9 @@ export default function DashboardClientLayout({
       </aside>
 
       {/* AREA KONTEN UTAMA */}
-      <main className="flex-1 h-screen overflow-y-auto p-4 sm:p-6 md:p-8">
+      {/* Latar dibuat bernuansa emerald lembut agar senada dengan sidebar,
+          tanpa mengalahkan kontras kartu konten berwarna putih. */}
+      <main className="flex-1 h-screen overflow-y-auto bg-gradient-to-br from-emerald-50/80 via-slate-50 to-teal-50/70 p-4 sm:p-6 md:p-8">
         {children}
         {error && <div className="mt-4 p-3 bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs rounded-xl">{error}</div>}
       </main>
