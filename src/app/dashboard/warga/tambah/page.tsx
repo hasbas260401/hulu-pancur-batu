@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import { connection } from 'next/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
@@ -7,17 +7,13 @@ import { Suspense } from 'react'
 import { getWargaScope } from '@/lib/warga-scope'
 import TambahWargaForm from './TambahWargaForm'
 
-const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient }
-const prisma = globalForPrisma.prisma ?? new PrismaClient()
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
-
 export default function TambahWargaPage() {
   return (
     <Suspense
       fallback={
         <div className="flex items-center justify-center min-h-[50vh] w-full">
           <div className="flex items-center gap-3 bg-slate-900 text-white px-5 py-3 rounded-xl text-xs font-bold shadow-lg">
-            <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+            <div className="w-4 h-4 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin"></div>
             <span>Memuat formulir...</span>
           </div>
         </div>
@@ -55,7 +51,7 @@ async function TambahWargaContent() {
     <div className="max-w-4xl mx-auto space-y-6 pb-12">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Tambah Data Warga Baru</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-800">Tambah Data Warga Baru</h1>
           <p className="text-sm text-slate-500">Masukkan informasi kependudukan warga desa.</p>
         </div>
         <Link

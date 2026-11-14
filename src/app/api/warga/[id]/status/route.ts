@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getWargaScope } from '@/lib/warga-scope'
 import { updateStatusWargaAction } from '@/app/dashboard/warga/actions'
+import { isSameOrigin, forbiddenOriginResponse } from '@/lib/same-origin'
 
 const NO_STORE = { 'Cache-Control': 'no-store' }
 
@@ -11,6 +12,8 @@ export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  if (!isSameOrigin(req)) return forbiddenOriginResponse()
+
   const scope = await getWargaScope()
   if (!scope.ok) {
     return NextResponse.json({ error: scope.message }, { status: scope.status, headers: NO_STORE })

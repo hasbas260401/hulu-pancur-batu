@@ -1,9 +1,6 @@
-import { NextResponse } from 'next/server'
-import { PrismaClient, type Prisma } from '@prisma/client'
-
-const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient }
-const prisma = globalForPrisma.prisma ?? new PrismaClient()
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
+import { NextResponse, connection } from 'next/server'
+import { type Prisma } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 
 const NO_STORE = { 'Cache-Control': 'no-store' }
 const PAGE_SIZE = 10
@@ -26,6 +23,7 @@ function maskNik(nik: string) {
  * berdasarkan NIK tetap dilakukan di server terhadap NIK asli.
  */
 export async function GET(request: Request) {
+  await connection()
   try {
     const { searchParams } = new URL(request.url)
 

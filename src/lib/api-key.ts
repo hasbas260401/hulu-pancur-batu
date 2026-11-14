@@ -1,10 +1,9 @@
 import crypto from 'crypto'
 import { NextResponse } from 'next/server'
-import { PrismaClient, type ApiKeyJenis } from '@prisma/client'
-
-const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient }
-const prisma = globalForPrisma.prisma ?? new PrismaClient()
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
+import { type ApiKeyJenis } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
+import { clientIp } from '@/lib/rate-limit'
+import { catatKejadianKeamanan } from '@/lib/audit'
 
 /** Hash SHA-256 (hex). Aman dipakai karena key berupa string acak berentropi tinggi. */
 export function hashApiKey(key: string) {
@@ -57,7 +56,16 @@ export function readApiKey(headers: Headers): string | undefined {
  */
 export async function verifyApiKey(req: Request, jenis: ApiKeyJenis): Promise<VerifyResult> {
   const provided = readApiKey(req.headers)
+  const ip = clientIp(req)
+  const ipAman = ip === 'unknown' ? null : ip
+
   if (!provided) {
+    await catatKejadianKeamanan({
+      aksi: 'SECURITY_API_KEY_INVALID',
+      entitas: 'API Eksternal',
+      detail: { jenis, alasan: 'API key tidak dikirim' },
+      ip: ipAman,
+    })
     return fail(401, 'API key tidak ditemukan. Sertakan header x-api-key atau Authorization: Bearer <API_KEY>.')
   }
 
@@ -69,10 +77,26 @@ export async function verifyApiKey(req: Request, jenis: ApiKeyJenis): Promise<Ve
   const match = !!row && a.length === b.length && crypto.timingSafeEqual(a, b)
 
   if (!match) {
+    await catatKejadianKeamanan({
+      aksi: 'SECURITY_API_KEY_INVALID',
+      entitas: 'API Eksternal',
+      detail: {
+        jenis,
+        alasan: 'API key tidak valid',
+        awalan_key: provided.slice(0, 12),
+      },
+      ip: ipAman,
+    })
     return fail(401, 'API key tidak valid.')
   }
 
   if (!row.isActive) {
+    await catatKejadianKeamanan({
+      aksi: 'SECURITY_API_KEY_INVALID',
+      entitas: 'API Eksternal',
+      detail: { jenis, alasan: 'API key sedang dinonaktifkan' },
+      ip: ipAman,
+    })
     return fail(403, 'Akses API untuk data ini sedang dinonaktifkan.')
   }
 

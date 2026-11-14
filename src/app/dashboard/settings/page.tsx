@@ -1,10 +1,30 @@
 import { Suspense } from 'react'
 import { redirect } from 'next/navigation'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
+import { getWhatsAppConfig, maskToken } from '@/lib/whatsapp'
+import { gatewayBaseUrl } from '@/lib/whatsapp-gateway'
+import AuditLogPanel from '../audit-log/AuditLogPanel'
+import { ambilDataAudit, type AuditLogSearchParams } from '../audit-log/data'
 import SettingsClient from './SettingsClient'
 
-const prisma = new PrismaClient()
+type SettingsTab =
+  | 'password'
+  | 'email'
+  | 'phone'
+  | 'sessions'
+  | 'api'
+  | 'whatsapp'
+  | 'audit'
+  | 'advanced'
+
+const TAB_ADMIN: SettingsTab[] = ['api', 'whatsapp', 'audit', 'advanced']
+const TAB_USER: SettingsTab[] = ['password', 'email', 'phone', 'sessions']
+
+function tentukanTabAwal(value: string | undefined, isAdmin: boolean): SettingsTab {
+  const valid = isAdmin ? [...TAB_USER, ...TAB_ADMIN] : TAB_USER
+  return value && (valid as string[]).includes(value) ? (value as SettingsTab) : 'password'
+}
 
 // Ubah user-agent mentah jadi nama yang mudah dibaca
 function parseDevice(ua: string | null) {
@@ -50,7 +70,12 @@ function SettingsSkeleton() {
 }
 
 // Komponen yang mengambil data (auth + database) — dibungkus Suspense di bawah
-async function SettingsData() {
+async function SettingsData({
+  searchParams,
+}: {
+  searchParams: Promise<AuditLogSearchParams & { tab?: string }>
+}) {
+  const params = await searchParams
   const session = await auth()
   const userId = (session?.user as any)?.id as string | undefined
   const currentSessionId = (session?.user as any)?.sessionId as string | undefined
@@ -62,11 +87,18 @@ async function SettingsData() {
       where: { userId, expiresAt: { gt: new Date() } },
       orderBy: { createdAt: 'desc' },
     }),
-    // Role dicek dari database, bukan dari token login
-    prisma.user.findUnique({ where: { id: userId }, select: { role: true } }),
+    // Role & status akun dicek dari database, bukan dari token login
+    prisma.user.findUnique({ where: { id: userId }, select: { role: true, statusAkun: true } }),
   ])
 
   const isAdmin = me?.role === 'ADMIN'
+
+  // Warga dengan akun PENDING tidak boleh mengakses Pengaturan Akun. Guard ini
+  // mencegah bypass dengan mengetik URL langsung, bukan sekadar menyembunyikan menu.
+  const statusAkun = String(me?.statusAkun || 'ACTIVE').toUpperCase()
+  if (me?.role === 'WARGA' && statusAkun !== 'AKTIF' && statusAkun !== 'ACTIVE') {
+    redirect('/dashboard/warga-home?locked=settings')
+  }
 
   // Data API key hanya diambil untuk ADMIN. Yang dikirim ke browser hanya info
   // non-rahasia (awalan key, status, waktu pakai) — hash tidak pernah dikirim.
@@ -91,13 +123,62 @@ async function SettingsData() {
     lastUsedAt: k.lastUsedAt ? k.lastUsedAt.toISOString() : null,
   }))
 
-  return <SettingsClient sessions={sessions} isAdmin={isAdmin} apiKeys={apiKeys} />
+  // Tombol reset hanya tersedia saat development, atau di produksi bila
+  // ALLOW_DB_RESET=true sengaja dinyalakan (rute API memeriksa hal yang sama).
+  const resetEnabled = process.env.NODE_ENV !== 'production' || process.env.ALLOW_DB_RESET === 'true'
+
+  // Status integrasi WhatsApp Gateway (dibaca dari database, token disamarkan).
+  const waConfig = await getWhatsAppConfig()
+
+  // Tab awal mengikuti query (?tab=...) agar filter Audit Log tetap berada di
+  // dalam Pengaturan. Tab khusus admin diabaikan untuk pengguna non-admin.
+  const initialTab = tentukanTabAwal(params.tab, isAdmin)
+
+  // Data Audit Log hanya diambil untuk ADMIN dan langsung dirender sebagai
+  // Server Component yang ditanam di tab Audit Log.
+  const auditData = isAdmin
+    ? await ambilDataAudit({ q: params.q, jenis: params.jenis, page: params.page })
+    : null
+
+  return (
+    <SettingsClient
+      sessions={sessions}
+      isAdmin={isAdmin}
+      apiKeys={apiKeys}
+      resetEnabled={resetEnabled}
+      initialTab={initialTab}
+      waConfig={{
+        enabled: waConfig.enabled,
+        apiUrl: waConfig.apiUrl,
+        senderNumber: waConfig.senderNumber,
+        format: waConfig.format,
+        authType: waConfig.authType,
+        hasToken: Boolean(waConfig.token),
+        tokenMasked: maskToken(waConfig.token),
+        gatewayUrl: gatewayBaseUrl(waConfig.apiUrl),
+      }}
+      auditPanel={
+        auditData ? (
+          <AuditLogPanel
+            data={auditData}
+            basePath="/dashboard/settings"
+            tab="audit"
+            embedded
+          />
+        ) : null
+      }
+    />
+  )
 }
 
-export default function SettingsPage() {
+export default function SettingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<AuditLogSearchParams & { tab?: string }>
+}) {
   return (
     <Suspense fallback={<SettingsSkeleton />}>
-      <SettingsData />
+      <SettingsData searchParams={searchParams} />
     </Suspense>
   )
 }

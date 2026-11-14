@@ -78,9 +78,9 @@ const TYPE_STYLE: Record<
   },
   info: {
     icon: <Info className="h-6 w-6" />,
-    ring: 'ring-sky-100',
-    bg: 'bg-sky-50',
-    text: 'text-sky-700',
+    ring: 'ring-teal-100',
+    bg: 'bg-teal-50',
+    text: 'text-teal-700',
     button: 'bg-slate-800 hover:bg-slate-900',
   },
 }

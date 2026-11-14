@@ -1,28 +1,43 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import dynamic from 'next/dynamic'
+import type { DemographicPoint, ReligionPoint } from './DashboardCharts'
 import {
   Users,
   Home,
   Mars,
   Venus,
-  BarChart3,
   HandHeart,
   MapPin,
-  Building2,
-  BookOpen,
+  Landmark,
   type LucideIcon,
 } from 'lucide-react'
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  CartesianGrid,
-  Legend
-} from 'recharts'
+
+// Grafik (recharts) dimuat terpisah: pustaka ini berat, jadi baru diunduh
+// setelah komponen ini tampil di browser.
+const DashboardCharts = dynamic(() => import('./DashboardCharts'), {
+  ssr: false,
+  loading: () => (
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2" aria-hidden="true">
+      {[0, 1].map((i) => (
+        <div
+          key={i}
+          className="rounded-2xl bg-white p-6 ring-1 ring-slate-200/80 shadow-sm"
+        >
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 animate-pulse rounded-xl bg-slate-100" />
+            <div className="space-y-2">
+              <div className="h-4 w-40 animate-pulse rounded bg-slate-100" />
+              <div className="h-3 w-56 animate-pulse rounded bg-slate-100" />
+            </div>
+          </div>
+          <div className="mt-6 h-72 w-full animate-pulse rounded-xl bg-slate-50" />
+        </div>
+      ))}
+    </div>
+  ),
+})
 
 // Komponen Animasi Hitung Angka (Count-Up)
 function AnimatedCounter({ end, duration = 1000 }: { end: number; duration?: number }) {
@@ -77,46 +92,22 @@ function StatCard({
   )
 }
 
-// Pembungkus grafik: ikon + judul + deskripsi
-function ChartCard({
-  icon: Icon,
-  tone,
-  title,
-  desc,
-  children,
+// Pembungkus grafik dipindah ke DashboardCharts agar recharts tidak ikut
+// bundel awal dashboard.
+
+export default function DashboardClient({
+  stats,
+  demographicData,
+  religionData,
+  isKadus,
+  user,
 }: {
-  icon: LucideIcon
-  tone: string
-  title: string
-  desc: string
-  children: React.ReactNode
+  stats: any
+  demographicData: DemographicPoint[]
+  religionData: ReligionPoint[]
+  isKadus: boolean
+  user: any
 }) {
-  return (
-    <section className="rounded-2xl bg-white p-6 ring-1 ring-slate-200/80 shadow-sm">
-      <div className="flex items-center gap-3">
-        <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${tone}`}>
-          <Icon className="h-5 w-5" />
-        </span>
-        <div className="min-w-0">
-          <h2 className="text-base font-semibold text-slate-900">{title}</h2>
-          <p className="text-sm text-slate-500">{desc}</p>
-        </div>
-      </div>
-      <div className="mt-6 h-72 w-full">{children}</div>
-    </section>
-  )
-}
-
-const tooltipStyle = {
-  backgroundColor: '#ffffff',
-  border: '1px solid #e2e8f0',
-  borderRadius: '12px',
-  color: '#0f172a',
-  fontSize: '12px',
-  boxShadow: '0 8px 24px -8px rgb(15 23 42 / 0.18)',
-}
-
-export default function DashboardClient({ stats, daftarDusun, isKadus, user }: { stats: any; daftarDusun: any[]; isKadus: boolean; user: any }) {
   const {
     totalWarga,
     totalKK,
@@ -132,60 +123,83 @@ export default function DashboardClient({ stats, daftarDusun, isKadus, user }: {
     agamaKonghucu
   } = stats
 
-  // Data Grafik 1: Demografi Kependudukan per Dusun
-  const demographicData = daftarDusun.map((dusun: any) => {
-    const warga = dusun.warga || []
-    const kkIds = new Set(warga.map((w: any) => w.kkId).filter(Boolean))
-    return {
-      name: dusun.nama,
-      'Laki-Laki': warga.filter((w: any) => w.jenisKelamin === 'LAKI_LAKI' || w.jenisKelamin === 'L').length,
-      'Perempuan': warga.filter((w: any) => w.jenisKelamin === 'PEREMPUAN' || w.jenisKelamin === 'P').length,
-      'Kartu Keluarga': kkIds.size,
-      'Total Warga': warga.length
-    }
-  })
-
-  // Data Grafik 2: Statistik Agama per Dusun
-  const religionData = daftarDusun.map((dusun: any) => {
-    const warga = dusun.warga || []
-    return {
-      name: dusun.nama,
-      Islam: warga.filter((w: any) => w.agama?.toLowerCase() === 'islam').length,
-      Kristen: warga.filter((w: any) => w.agama?.toLowerCase() === 'kristen').length,
-      Katolik: warga.filter((w: any) => w.agama?.toLowerCase() === 'katolik').length,
-      Hindu: warga.filter((w: any) => w.agama?.toLowerCase() === 'hindu').length,
-      Buddha: warga.filter((w: any) => w.agama?.toLowerCase() === 'buddha').length,
-      Konghucu: warga.filter((w: any) => w.agama?.toLowerCase() === 'konghucu').length,
-    }
-  })
-
-  const axisTick = { fill: '#64748b', fontSize: 12 }
-
   return (
     <div className="space-y-6 pb-10">
 
       {/* Info Cakupan Administratif */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-slate-800 to-blue-800 p-6 text-white shadow-sm">
-        <div className="flex items-center gap-4">
-          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/10 ring-1 ring-white/15">
-            {isKadus ? <MapPin className="h-6 w-6 text-blue-200" /> : <Building2 className="h-6 w-6 text-blue-200" />}
-          </span>
-          <div className="min-w-0">
-            <p className="text-sm text-slate-300">
-              {isKadus ? 'Status Wilayah Tugas' : 'Cakupan Administrasi Desa'}
-            </p>
-            <p className="mt-0.5 text-lg font-semibold leading-snug">
-              {isKadus ? `${user?.dusunNama} (Aktif)` : `${totalDusun} Dusun Terdaftar di Desa Hulu Pancur Batu (I - V)`}
-            </p>
+      <section className="relative overflow-hidden rounded-3xl border border-emerald-900/40 bg-gradient-to-br from-emerald-950 via-emerald-900 to-teal-900 p-6 text-white shadow-lg shadow-emerald-950/20 sm:p-7">
+        {/* Aksen dekoratif lembut agar kartu tidak terasa polos */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -right-20 -top-24 h-60 w-60 rounded-full bg-emerald-400/10 blur-3xl"
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -bottom-28 left-1/3 h-60 w-60 rounded-full bg-teal-300/10 blur-3xl"
+        />
+
+        <div className="relative flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-4">
+            <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/10 text-emerald-100 ring-1 ring-white/15 backdrop-blur">
+              {isKadus ? <MapPin className="h-7 w-7" /> : <Landmark className="h-7 w-7" />}
+            </span>
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-200/70">
+                {isKadus ? 'Status Wilayah Tugas' : 'Cakupan Administrasi Desa'}
+              </p>
+              <h2 className="mt-1 text-lg font-semibold leading-snug sm:text-xl">
+                {isKadus
+                  ? user?.dusunNama || 'Dusun Anda'
+                  : 'Desa Hulu Pancur Batu'}
+              </h2>
+              <p className="mt-1 max-w-xl text-xs leading-relaxed text-emerald-100/70">
+                {isKadus
+                  ? 'Anda bertugas mengelola data kependudukan dan layanan administrasi pada wilayah ini.'
+                  : `${totalDusun} dusun terdaftar (Dusun I–V) dengan pelayanan administrasi terpadu.`}
+              </p>
+              {isKadus && (
+                <span className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-emerald-400/25 bg-emerald-400/10 px-2.5 py-0.5 text-[10px] font-bold text-emerald-200">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                  Wilayah Aktif
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className="grid w-full grid-cols-3 gap-2 sm:w-auto sm:gap-3">
+            <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 backdrop-blur">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-200/60">
+                {isKadus ? 'Wilayah' : 'Dusun'}
+              </p>
+              <p className="mt-0.5 text-lg font-semibold tabular-nums">
+                {isKadus ? 1 : totalDusun}
+              </p>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 backdrop-blur">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-200/60">
+                Warga
+              </p>
+              <p className="mt-0.5 text-lg font-semibold tabular-nums">
+                {Number(totalWarga).toLocaleString('id-ID')}
+              </p>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 backdrop-blur">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-200/60">
+                KK
+              </p>
+              <p className="mt-0.5 text-lg font-semibold tabular-nums">
+                {Number(totalKK).toLocaleString('id-ID')}
+              </p>
+            </div>
           </div>
         </div>
-      </div>
+      </section>
 
       {/* Grid Kartu Statistik Utama */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
-        <StatCard icon={Users} tone="bg-blue-50 text-blue-600" label="Total warga" value={totalWarga} />
+        <StatCard icon={Users} tone="bg-emerald-50 text-emerald-600" label="Total warga" value={totalWarga} />
         <StatCard icon={Home} tone="bg-teal-50 text-teal-600" label="Kartu keluarga" value={totalKK} />
-        <StatCard icon={Mars} tone="bg-sky-50 text-sky-600" label="Laki-laki" value={totalLakiLaki} />
+        <StatCard icon={Mars} tone="bg-emerald-50 text-emerald-600" label="Laki-laki" value={totalLakiLaki} />
         <StatCard icon={Venus} tone="bg-rose-50 text-rose-500" label="Perempuan" value={totalPerempuan} />
         <StatCard
           icon={HandHeart}
@@ -196,60 +210,13 @@ export default function DashboardClient({ stats, daftarDusun, isKadus, user }: {
         />
       </div>
 
-      {/* Grid Grafik */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-
-        {/* GRAFIK 1: Demografi Kependudukan */}
-        {!isKadus && demographicData.length > 0 && (
-          <ChartCard
-            icon={BarChart3}
-            tone="bg-blue-50 text-blue-600"
-            title="Demografi kependudukan per dusun"
-            desc="Perbandingan laki-laki, perempuan, KK, dan total warga."
-          >
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={demographicData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }} barCategoryGap="24%">
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                <XAxis dataKey="name" tick={axisTick} axisLine={false} tickLine={false} />
-                <YAxis tick={axisTick} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={tooltipStyle} cursor={{ fill: '#f1f5f9' }} />
-                <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '12px', paddingTop: '12px' }} />
-                <Bar dataKey="Laki-Laki" fill="#0ea5e9" radius={[6, 6, 0, 0]} />
-                <Bar dataKey="Perempuan" fill="#f43f5e" radius={[6, 6, 0, 0]} />
-                <Bar dataKey="Kartu Keluarga" fill="#14b8a6" radius={[6, 6, 0, 0]} />
-                <Bar dataKey="Total Warga" fill="#2563eb" radius={[6, 6, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </ChartCard>
-        )}
-
-        {/* GRAFIK 2: Statistik Agama */}
-        {!isKadus && religionData.length > 0 && (
-          <ChartCard
-            icon={BookOpen}
-            tone="bg-violet-50 text-violet-600"
-            title="Rincian agama per dusun"
-            desc="Distribusi pemeluk agama di setiap wilayah dusun."
-          >
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={religionData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }} barCategoryGap="24%">
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                <XAxis dataKey="name" tick={axisTick} axisLine={false} tickLine={false} />
-                <YAxis tick={axisTick} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={tooltipStyle} cursor={{ fill: '#f1f5f9' }} />
-                <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '12px', paddingTop: '12px' }} />
-                <Bar dataKey="Islam" fill="#2563eb" radius={[6, 6, 0, 0]} />
-                <Bar dataKey="Kristen" fill="#7c3aed" radius={[6, 6, 0, 0]} />
-                <Bar dataKey="Katolik" fill="#db2777" radius={[6, 6, 0, 0]} />
-                <Bar dataKey="Hindu" fill="#f59e0b" radius={[6, 6, 0, 0]} />
-                <Bar dataKey="Buddha" fill="#10b981" radius={[6, 6, 0, 0]} />
-                <Bar dataKey="Konghucu" fill="#64748b" radius={[6, 6, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </ChartCard>
-        )}
-
-      </div>
+      {/* Grid Grafik (dimuat terpisah agar bundel awal dashboard ringan) */}
+      {!isKadus && (demographicData.length > 0 || religionData.length > 0) && (
+        <DashboardCharts
+          demographicData={demographicData}
+          religionData={religionData}
+        />
+      )}
     </div>
   )
 }

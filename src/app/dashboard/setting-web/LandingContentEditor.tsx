@@ -18,11 +18,14 @@ import {
 } from 'lucide-react'
 import type {
   FactIcon,
+  FactSource,
   LandingContent,
   NewsCategory,
   NewsIcon,
   ServiceIcon,
 } from '@/lib/landing-content'
+import { quickFactValue } from '@/lib/landing-content'
+import type { CommunityStats } from '@/lib/community-stats'
 
 const inputClass =
   'w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
@@ -33,6 +36,13 @@ const FACT_OPTIONS: { value: FactIcon; label: string }[] = [
   { value: 'home', label: 'Dusun / Rumah' },
   { value: 'wallet', label: 'Anggaran' },
   { value: 'sprout', label: 'Kegiatan' },
+]
+
+const FACT_SOURCE_OPTIONS: { value: FactSource; label: string }[] = [
+  { value: 'manual', label: 'Isi manual' },
+  { value: 'population', label: 'Total warga (database)' },
+  { value: 'households', label: 'Total KK (database)' },
+  { value: 'villages', label: 'Jumlah dusun (database)' },
 ]
 
 const SERVICE_OPTIONS: { value: ServiceIcon; label: string }[] = [
@@ -137,31 +147,6 @@ function TextField({
   )
 }
 
-function NumberField({
-  label,
-  value,
-  onChange,
-  hint,
-}: {
-  label: string
-  value: number
-  onChange: (value: number) => void
-  hint?: string
-}) {
-  return (
-    <Field label={label} hint={hint}>
-      <input
-        type="number"
-        value={Number.isFinite(value) ? value : 0}
-        onChange={(event) =>
-          onChange(event.target.value === '' ? 0 : Number(event.target.value))
-        }
-        className={inputClass}
-      />
-    </Field>
-  )
-}
-
 function TextAreaField({
   label,
   value,
@@ -211,6 +196,24 @@ function SelectField<T extends string>({
           </option>
         ))}
       </select>
+    </Field>
+  )
+}
+
+function ReadOnlyField({
+  label,
+  value,
+  hint,
+}: {
+  label: string
+  value: string
+  hint?: string
+}) {
+  return (
+    <Field label={label} hint={hint}>
+      <div className="w-full rounded-xl border border-dashed border-emerald-300 bg-emerald-50/60 px-3.5 py-2.5 text-xs font-semibold text-emerald-800">
+        {value}
+      </div>
     </Field>
   )
 }
@@ -274,9 +277,11 @@ function ItemHeader({
 
 export default function LandingContentEditor({
   content,
+  stats,
   onChange,
 }: {
   content: LandingContent
+  stats?: CommunityStats | null
   onChange: (next: LandingContent) => void
 }) {
   const update = <K extends keyof LandingContent>(
@@ -305,13 +310,6 @@ export default function LandingContentEditor({
   const updateTransparency = (
     patch: Partial<LandingContent['transparency']>
   ) => update('transparency', { ...content.transparency, ...patch })
-
-  const updatePopulation = (
-    patch: Partial<LandingContent['transparency']['population']>
-  ) =>
-    updateTransparency({
-      population: { ...content.transparency.population, ...patch },
-    })
 
   const updateFooter = (patch: Partial<LandingContent['footer']>) =>
     update('footer', { ...content.footer, ...patch })
@@ -647,57 +645,89 @@ export default function LandingContentEditor({
       <SectionCard
         icon={<Users className="h-4 w-4" />}
         title="Statistik Ringkas"
-        description="Tiga angka utama yang tampil di kartu informasi halaman depan."
+        description="Angka utama di kartu informasi halaman depan. Pilih sumber database agar nilainya selalu mengikuti data desa."
       >
         <div className="space-y-3">
-          {content.quickFacts.map((fact, index) => (
-            <div
-              key={`fact-${index}`}
-              className="grid gap-3 rounded-xl border border-slate-200 bg-slate-50/60 p-3 sm:grid-cols-[150px_1fr_1fr_auto]"
-            >
-              <SelectField
-                label="Ikon"
-                value={fact.icon}
-                onChange={(value) =>
-                  update(
-                    'quickFacts',
-                    replaceAt(content.quickFacts, index, { ...fact, icon: value })
-                  )
-                }
-                options={FACT_OPTIONS}
-              />
-              <TextField
-                label="Label"
-                value={fact.label}
-                onChange={(value) =>
-                  update(
-                    'quickFacts',
-                    replaceAt(content.quickFacts, index, { ...fact, label: value })
-                  )
-                }
-              />
-              <TextField
-                label="Nilai"
-                value={fact.value}
-                onChange={(value) =>
-                  update(
-                    'quickFacts',
-                    replaceAt(content.quickFacts, index, { ...fact, value })
-                  )
-                }
-              />
-              <DeleteButton
-                onClick={() =>
-                  update('quickFacts', removeAt(content.quickFacts, index))
-                }
-              />
-            </div>
-          ))}
+          {content.quickFacts.map((fact, index) => {
+            const source = fact.source ?? 'manual'
+            const autoValue = quickFactValue(source, stats)
+
+            return (
+              <div
+                key={`fact-${index}`}
+                className="space-y-3 rounded-xl border border-slate-200 bg-slate-50/60 p-3"
+              >
+                <div className="grid gap-3 sm:grid-cols-[150px_1fr_auto]">
+                  <SelectField
+                    label="Ikon"
+                    value={fact.icon}
+                    onChange={(value) =>
+                      update(
+                        'quickFacts',
+                        replaceAt(content.quickFacts, index, { ...fact, icon: value })
+                      )
+                    }
+                    options={FACT_OPTIONS}
+                  />
+                  <TextField
+                    label="Label"
+                    value={fact.label}
+                    onChange={(value) =>
+                      update(
+                        'quickFacts',
+                        replaceAt(content.quickFacts, index, { ...fact, label: value })
+                      )
+                    }
+                  />
+                  <DeleteButton
+                    onClick={() =>
+                      update('quickFacts', removeAt(content.quickFacts, index))
+                    }
+                  />
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <SelectField
+                    label="Sumber nilai"
+                    value={source}
+                    onChange={(value) =>
+                      update(
+                        'quickFacts',
+                        replaceAt(content.quickFacts, index, {
+                          ...fact,
+                          source: value,
+                        })
+                      )
+                    }
+                    options={FACT_SOURCE_OPTIONS}
+                  />
+                  {source === 'manual' ? (
+                    <TextField
+                      label="Nilai"
+                      value={fact.value}
+                      onChange={(value) =>
+                        update(
+                          'quickFacts',
+                          replaceAt(content.quickFacts, index, { ...fact, value })
+                        )
+                      }
+                    />
+                  ) : (
+                    <ReadOnlyField
+                      label="Nilai otomatis"
+                      value={autoValue ?? 'Belum tersedia'}
+                      hint="Dihitung ulang dari database setiap halaman depan dibuka."
+                    />
+                  )}
+                </div>
+              </div>
+            )
+          })}
           <AddButton
             onClick={() =>
               update('quickFacts', [
                 ...content.quickFacts,
-                { icon: 'trees', label: '', value: '' },
+                { icon: 'trees', label: '', value: '', source: 'manual' },
               ])
             }
           >
@@ -973,16 +1003,6 @@ export default function LandingContentEditor({
             value={content.transparency.actionLabel}
             onChange={(value) => updateTransparency({ actionLabel: value })}
           />
-          <TextField
-            label="Tahun anggaran"
-            value={content.transparency.year}
-            onChange={(value) => updateTransparency({ year: value })}
-          />
-          <TextField
-            label="Judul kartu anggaran"
-            value={content.transparency.budgetTitle}
-            onChange={(value) => updateTransparency({ budgetTitle: value })}
-          />
         </div>
         <TextAreaField
           label="Catatan di bawah rincian anggaran"
@@ -991,193 +1011,26 @@ export default function LandingContentEditor({
           rows={2}
         />
 
-        <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 space-y-3">
-          <h3 className="text-xs font-bold uppercase tracking-wide text-slate-700">
-            Data Kependudukan
-          </h3>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <TextField
-              label="Total penduduk"
-              value={content.transparency.population.total}
-              onChange={(value) => updatePopulation({ total: value })}
-            />
-            <TextField
-              label="Kepala keluarga"
-              value={content.transparency.population.households}
-              onChange={(value) => updatePopulation({ households: value })}
-            />
-            <NumberField
-              label="Jumlah laki-laki"
-              value={content.transparency.population.male}
-              onChange={(value) => updatePopulation({ male: value })}
-            />
-            <NumberField
-              label="Jumlah perempuan"
-              value={content.transparency.population.female}
-              onChange={(value) => updatePopulation({ female: value })}
-            />
-          </div>
+        <div className="flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs leading-relaxed text-emerald-900">
+          <Info className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" />
+          <p>
+            <strong>Data kependudukan diisi otomatis.</strong> Total penduduk,
+            kepala keluarga, serta jumlah laki-laki dan perempuan diambil langsung
+            dari tabel warga, kartu keluarga, dan dusun. Untuk memperbarui angkanya,
+            ubah data melalui menu <strong>Data Warga</strong> atau{' '}
+            <strong>Kartu Keluarga</strong>.
+          </p>
         </div>
 
-        <div className="space-y-3">
-          <h3 className="text-xs font-bold uppercase tracking-wide text-slate-700">
-            Ringkasan APBDes
-          </h3>
-          {content.transparency.budgetSummary.map((item, index) => (
-            <div
-              key={`budget-summary-${index}`}
-              className="grid gap-3 rounded-xl border border-slate-200 bg-slate-50/60 p-3 sm:grid-cols-[1fr_1fr_1fr_100px_auto]"
-            >
-              <TextField
-                label="Label"
-                value={item.label}
-                onChange={(value) =>
-                  updateTransparency({
-                    budgetSummary: replaceAt(
-                      content.transparency.budgetSummary,
-                      index,
-                      { ...item, label: value }
-                    ),
-                  })
-                }
-              />
-              <TextField
-                label="Target"
-                value={item.target}
-                onChange={(value) =>
-                  updateTransparency({
-                    budgetSummary: replaceAt(
-                      content.transparency.budgetSummary,
-                      index,
-                      { ...item, target: value }
-                    ),
-                  })
-                }
-              />
-              <TextField
-                label="Realisasi"
-                value={item.realized}
-                onChange={(value) =>
-                  updateTransparency({
-                    budgetSummary: replaceAt(
-                      content.transparency.budgetSummary,
-                      index,
-                      { ...item, realized: value }
-                    ),
-                  })
-                }
-              />
-              <NumberField
-                label="Persen"
-                value={item.pct}
-                onChange={(value) =>
-                  updateTransparency({
-                    budgetSummary: replaceAt(
-                      content.transparency.budgetSummary,
-                      index,
-                      { ...item, pct: value }
-                    ),
-                  })
-                }
-              />
-              <DeleteButton
-                onClick={() =>
-                  updateTransparency({
-                    budgetSummary: removeAt(
-                      content.transparency.budgetSummary,
-                      index
-                    ),
-                  })
-                }
-              />
-            </div>
-          ))}
-          <AddButton
-            onClick={() =>
-              updateTransparency({
-                budgetSummary: [
-                  ...content.transparency.budgetSummary,
-                  { label: '', target: '', realized: '', pct: 0 },
-                ],
-              })
-            }
-          >
-            Tambah ringkasan anggaran
-          </AddButton>
-        </div>
-
-        <div className="space-y-3">
-          <h3 className="text-xs font-bold uppercase tracking-wide text-slate-700">
-            Belanja Menurut Bidang
-          </h3>
-          {content.transparency.budgetSplit.map((item, index) => (
-            <div
-              key={`budget-split-${index}`}
-              className="grid gap-3 rounded-xl border border-slate-200 bg-slate-50/60 p-3 sm:grid-cols-[1fr_1fr_100px_auto]"
-            >
-              <TextField
-                label="Bidang"
-                value={item.label}
-                onChange={(value) =>
-                  updateTransparency({
-                    budgetSplit: replaceAt(
-                      content.transparency.budgetSplit,
-                      index,
-                      { ...item, label: value }
-                    ),
-                  })
-                }
-              />
-              <TextField
-                label="Jumlah"
-                value={item.amount}
-                onChange={(value) =>
-                  updateTransparency({
-                    budgetSplit: replaceAt(
-                      content.transparency.budgetSplit,
-                      index,
-                      { ...item, amount: value }
-                    ),
-                  })
-                }
-              />
-              <NumberField
-                label="Persen"
-                value={item.pct}
-                onChange={(value) =>
-                  updateTransparency({
-                    budgetSplit: replaceAt(
-                      content.transparency.budgetSplit,
-                      index,
-                      { ...item, pct: value }
-                    ),
-                  })
-                }
-              />
-              <DeleteButton
-                onClick={() =>
-                  updateTransparency({
-                    budgetSplit: removeAt(
-                      content.transparency.budgetSplit,
-                      index
-                    ),
-                  })
-                }
-              />
-            </div>
-          ))}
-          <AddButton
-            onClick={() =>
-              updateTransparency({
-                budgetSplit: [
-                  ...content.transparency.budgetSplit,
-                  { label: '', pct: 0, amount: '' },
-                ],
-              })
-            }
-          >
-            Tambah bidang belanja
-          </AddButton>
+        <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-900">
+          <Info className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
+          <p>
+            <strong>Data APBDes diisi otomatis.</strong> Total pendapatan,
+            belanja, persentase realisasi, tahun anggaran, judul kartu, dan rincian
+            belanja per bidang diambil dari menu{' '}
+            <strong>Transparansi Dana</strong>. Menambah atau mengubah data di sana
+            langsung memperbarui halaman depan tanpa perlu mengisi ulang di sini.
+          </p>
         </div>
 
         <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 space-y-3">

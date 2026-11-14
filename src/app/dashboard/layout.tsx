@@ -1,4 +1,5 @@
 import { auth } from '@/auth'
+import { prisma } from '@/lib/prisma'
 import { connection } from 'next/server'
 import { redirect } from 'next/navigation'
 import { Suspense } from 'react'
@@ -32,8 +33,31 @@ async function DashboardContent({
   // (sebelumnya tampil dengan peran cadangan "WARGA" dan menu kosong)
   if (!user) redirect('/login')
 
+  const role = user.role as string
+  const statusAkun = (user.statusAkun as string) || 'ACTIVE'
+
+  // Notifikasi surat masuk yang belum diproses. Hanya dihitung untuk petugas
+  // yang memang berwenang (ADMIN, atau KADUS dengan izin menu surat), dan
+  // dibatasi ke dusun penugasannya agar tidak membocorkan data dusun lain.
+  const canProcessSurat =
+    role === 'ADMIN' ||
+    (role === 'KADUS' && Array.isArray(user.permissions) && user.permissions.includes('surat'))
+
+  const suratMasukCount = canProcessSurat
+    ? await prisma.pengajuanSurat.count({
+        where: {
+          status: 'DIAJUKAN',
+          ...(role === 'KADUS' && user.dusunId ? { dusunId: user.dusunId as number } : {}),
+        },
+      })
+    : 0
+
   return (
-    <DashboardClientLayout user={user}>
+    <DashboardClientLayout
+      user={user}
+      statusAkun={statusAkun}
+      suratMasukCount={suratMasukCount}
+    >
       <SessionGuard />
       {children}
     </DashboardClientLayout>

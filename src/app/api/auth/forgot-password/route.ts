@@ -1,12 +1,8 @@
 import { NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
-import nodemailer from 'nodemailer'
+import { prisma } from '@/lib/prisma'
 import crypto from 'crypto'
 import { rateLimit, clientIp } from '@/lib/rate-limit'
-
-const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient }
-const prisma = globalForPrisma.prisma ?? new PrismaClient()
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
+import { sendMail } from '@/lib/mailer'
 
 const NO_STORE = { 'Cache-Control': 'no-store' }
 const TOKEN_TTL_MS = 15 * 60 * 1000
@@ -123,25 +119,20 @@ export async function POST(req: Request) {
       const resetUrl = `${base}/reset-password?token=${resetToken}`
 
       try {
-        const transporter = nodemailer.createTransport({
-          service: 'gmail',
-          auth: { user: process.env.EMAIL_SERVER_USER, pass: process.env.EMAIL_SERVER_PASSWORD },
-        })
-
-        await transporter.sendMail({
-          from: `"SIDU Desa Hulu Pancur Batu" <${process.env.EMAIL_SERVER_USER}>`,
+        await sendMail({
+          fromName: 'SIDU Desa Hulu Pancur Batu',
           to: user.email,
           subject: 'Link Reset Password - SIDU Desa Hulu Pancur Batu',
           html: `
             <div style="font-family: Arial, sans-serif; padding: 20px; color: #333; max-width: 600px; margin: auto; border: 1px solid #e2e8f0; border-radius: 12px;">
-              <h2 style="color: #1e40af; text-align: center;">Pemulihan Kata Sandi Akun</h2>
+              <h2 style="color: #065f46; text-align: center;">Pemulihan Kata Sandi Akun</h2>
               <p>Halo,</p>
               <p>Anda menerima email ini karena ada permintaan pemulihan kata sandi untuk akun Layanan Kependudukan Desa Hulu Pancur Batu.</p>
               <p style="text-align: center; margin: 30px 0;">
-                <a href="${resetUrl}" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Reset Password Sekarang</a>
+                <a href="${resetUrl}" style="background-color: #047857; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Reset Password Sekarang</a>
               </p>
               <p style="font-size: 13px; color: #64748b;">Atau salin tautan berikut ke browser Anda:</p>
-              <p style="font-size: 12px; color: #3b82f6; word-break: break-all;">${resetUrl}</p>
+              <p style="font-size: 12px; color: #047857; word-break: break-all;">${resetUrl}</p>
               <p style="font-size: 13px; color: #64748b; margin-top: 20px;">Tautan ini hanya berlaku selama 15 menit dan hanya dapat dipakai sekali. Jika Anda tidak merasa melakukan permintaan ini, abaikan email ini.</p>
             </div>
           `,

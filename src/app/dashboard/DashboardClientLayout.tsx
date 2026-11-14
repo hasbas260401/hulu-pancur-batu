@@ -4,13 +4,13 @@ import { useState, useTransition } from 'react'
 import { signOut } from 'next-auth/react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { 
-  LayoutDashboard, 
-  Users, 
-  FileText, 
-  HandHeart, 
-  Coins, 
-  UserCog, 
+import {
+  LayoutDashboard,
+  Users,
+  FileText,
+  HandHeart,
+  Coins,
+  UserCog,
   Globe,
   Home,
   UserCheck,
@@ -23,18 +23,37 @@ import {
   ChevronDown,
   FilePlus,
   History,
-  FileCode
+  FileCode,
+  Lock,
 } from 'lucide-react'
+import { useSuratPendingCount } from '@/lib/use-surat-pending-count'
 
 export default function DashboardClientLayout({
   children,
   user,
+  statusAkun = 'ACTIVE',
+  suratMasukCount = 0,
 }: {
   children: React.ReactNode
   user: any
+  statusAkun?: string
+  suratMasukCount?: number
 }) {
   const role = user?.role || 'WARGA'
   const permissions = user?.permissions || []
+  const canProcessSurat =
+    role === 'ADMIN' ||
+    (role === 'KADUS' && Array.isArray(permissions) && permissions.includes('surat'))
+
+  // Badge surat masuk diperbarui otomatis lewat polling (tanpa refresh browser).
+  const { count: pendingSuratCount } = useSuratPendingCount(suratMasukCount, canProcessSurat)
+
+  // Warga yang akunnya belum diverifikasi tetap bisa masuk, tetapi hanya
+  // menu Beranda yang aktif. Menu lain ditampilkan dalam keadaan terkunci.
+  const normalizedStatus = String(statusAkun ?? '').toUpperCase()
+  const isAccountActive = normalizedStatus === 'AKTIF' || normalizedStatus === 'ACTIVE'
+  const isWarga = role === 'WARGA'
+  const isLocked = isWarga && !isAccountActive
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [showLogoutModal, setShowLogoutModal] = useState(false)
@@ -121,9 +140,9 @@ export default function DashboardClientLayout({
   // --- FILTER MENU BERDASARKAN ROLE & PERMISSIONS ---
   const menuList = (() => {
     if (role === 'ADMIN') {
-      return adminMenuList.filter((menu) => adminMenuList.some((m) => m.id === menu.id))
+      return adminMenuList
     }
-    
+
     // Untuk WARGA atau KADUS, saring berdasarkan permissions
     let allowedMenus = allMenuList.filter((menu, index, self) => {
       // Hilangkan duplikasi ID
@@ -142,6 +161,12 @@ export default function DashboardClientLayout({
 
     return allowedMenus
   })()
+
+  // Menu yang terkunci selama akun warga masih PENDING. Beranda tetap bisa
+  // dibuka agar warga melihat status verifikasi akunnya.
+  function menuTerkunci(menuId: string) {
+    return isLocked && menuId !== 'warga-home'
+  }
 
   return (
     <div className="flex flex-col md:flex-row h-screen w-screen overflow-hidden bg-gradient-to-br from-emerald-50 via-slate-50 to-teal-50 font-sans">
@@ -195,12 +220,44 @@ export default function DashboardClientLayout({
 
         {/* Navigasi Menu */}
         <nav className="flex-1 space-y-1.5 overflow-y-auto p-4">
+          {isLocked && (
+            <div className="mb-3 rounded-xl border border-amber-400/30 bg-amber-500/10 p-3 text-[11px] leading-relaxed text-amber-100/90">
+              <div className="flex items-center gap-1.5 font-bold text-amber-200">
+                <Lock className="h-3.5 w-3.5" />
+                Akun Belum Diverifikasi
+              </div>
+              <p className="mt-1 text-amber-100/70">
+                Menu lain terbuka otomatis setelah admin menyetujui akun Anda.
+              </p>
+            </div>
+          )}
+
           {menuList.length === 0 ? (
             <div className="p-3 text-center text-xs text-emerald-100/60 bg-black/20 rounded-xl border border-white/10">
               Tidak ada akses menu. Silakan hubungi Administrator.
             </div>
           ) : (
             menuList.map((menu) => {
+              const terkunci = menuTerkunci(menu.id)
+              const badgeCount = menu.id === 'surat' ? pendingSuratCount : 0
+
+              if (terkunci) {
+                return (
+                  <div
+                    key={menu.id}
+                    aria-disabled="true"
+                    title="Menu terkunci sampai akun Anda diverifikasi admin."
+                    className="flex cursor-not-allowed items-center justify-between rounded-xl px-3.5 py-2.5 text-xs font-semibold text-emerald-100/25"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-base opacity-60">{menu.icon}</span>
+                      <span>{menu.label}</span>
+                    </div>
+                    <Lock className="h-3.5 w-3.5" />
+                  </div>
+                )
+              }
+
               if (menu.id === 'surat') {
                 const isSuratActive = pathname.startsWith('/dashboard/surat')
 
@@ -218,6 +275,11 @@ export default function DashboardClientLayout({
                       <div className="flex items-center gap-3">
                         <span className="text-base">{menu.icon}</span>
                         <span>{menu.label}</span>
+                        {badgeCount > 0 && (
+                          <span className="inline-flex min-w-[18px] items-center justify-center rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                            {badgeCount > 99 ? '99+' : badgeCount}
+                          </span>
+                        )}
                       </div>
                       <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isSuratOpen ? 'rotate-180' : ''}`} />
                     </button>
@@ -284,7 +346,9 @@ export default function DashboardClientLayout({
                   ? `Kadus ${user?.dusunNama || ''}` 
                   : role === 'ADMIN' 
                     ? 'Administrator' 
-                    : 'Warga Desa'}
+                    : isLocked
+                      ? 'Warga • Menunggu Verifikasi'
+                      : 'Warga Desa'}
               </div>
             </div>
           </div>
@@ -304,6 +368,18 @@ export default function DashboardClientLayout({
       {/* Latar dibuat bernuansa emerald lembut agar senada dengan sidebar,
           tanpa mengalahkan kontras kartu konten berwarna putih. */}
       <main className="flex-1 h-screen overflow-y-auto bg-gradient-to-br from-emerald-50/80 via-slate-50 to-teal-50/70 p-4 sm:p-6 md:p-8">
+        {isLocked && (
+          <div className="mb-5 flex items-start gap-3 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-amber-900">
+            <Lock className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+            <div className="text-xs leading-relaxed">
+              <p className="font-bold text-sm">Akun Anda menunggu verifikasi admin</p>
+              <p className="mt-0.5 text-amber-800">
+                Anda masih dapat melihat data diri di Beranda. Menu Profil &amp; Keluarga, Layanan Surat,
+                dan Pengaturan akan terbuka otomatis setelah akun disetujui.
+              </p>
+            </div>
+          </div>
+        )}
         {children}
         {error && <div className="mt-4 p-3 bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs rounded-xl">{error}</div>}
       </main>

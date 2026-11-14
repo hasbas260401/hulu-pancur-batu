@@ -64,7 +64,7 @@ export default function UbahStatusModal({ warga, isOpen, onClose }: UbahStatusMo
     <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl space-y-5 animate-in fade-in zoom-in duration-200">
         <div>
-          <h2 className="text-xl font-bold text-slate-800">Ubah Status Kependudukan</h2>
+          <h2 className="text-base font-bold text-slate-900">Ubah Status Kependudukan</h2>
           <p className="text-xs text-slate-500 font-medium mt-1">
             Warga: <span className="font-bold text-slate-700">{warga.nama}</span> ({warga.nik})
           </p>
@@ -79,7 +79,7 @@ export default function UbahStatusModal({ warga, isOpen, onClose }: UbahStatusMo
             <select
               value={statusBaru}
               onChange={(e) => setStatusBaru(e.target.value)}
-              className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50 font-medium cursor-pointer"
+              className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none bg-slate-50 font-medium cursor-pointer"
             >
               <option value="AKTIF">AKTIF</option>
               <option value="MENINGGAL">MENINGGAL</option>
@@ -168,7 +168,7 @@ export default function UbahStatusModal({ warga, isOpen, onClose }: UbahStatusMo
             <button
               type="submit"
               disabled={loading}
-              className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl shadow-sm transition disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
+              className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-xl shadow-sm transition disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
             >
               {loading ? (
                 <>

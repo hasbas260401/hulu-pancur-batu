@@ -25,11 +25,11 @@ export default function CopyPlaceholderClient() {
           key={tag}
           className="flex items-center justify-between px-3 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl transition text-xs font-mono"
         >
-          <span className="text-blue-700 font-bold">{tag}</span>
+          <span className="text-emerald-700 font-bold">{tag}</span>
           <button
             type="button"
             onClick={() => handleCopy(tag)}
-            className="p-1.5 text-slate-500 hover:text-blue-600 rounded-lg hover:bg-white transition cursor-pointer"
+            className="p-1.5 text-slate-500 hover:text-emerald-600 rounded-lg hover:bg-white transition cursor-pointer"
             title="Salin tag"
           >
             {copiedTag === tag ? (

@@ -1,13 +1,10 @@
 'use server'
 
-import { PrismaClient, Prisma, type JenisKelamin } from '@prisma/client'
+import { Prisma, type JenisKelamin } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 import { headers } from 'next/headers'
 import { getWargaScope } from '@/lib/warga-scope'
-
-const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient }
-const prisma = globalForPrisma.prisma ?? new PrismaClient()
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
 
 type ActionResult = { success: boolean; message: string }
 

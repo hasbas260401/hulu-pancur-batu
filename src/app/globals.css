@@ -17,3 +17,20 @@ input::placeholder, textarea::placeholder {
   -webkit-text-fill-color: #94a3b8 !important;
   opacity: 1 !important;
 }
+
+/*
+ * Kolom isian di atas permukaan gelap (modal). Aturan global di atas memakai
+ * !important dengan warna gelap, sehingga teks tidak terlihat. Kelas ini
+ * mengembalikan kontras teks putih khusus untuk modal gelap.
+ */
+.field-on-dark {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  caret-color: #ffffff;
+}
+
+.field-on-dark::placeholder {
+  color: #94a3b8 !important;
+  -webkit-text-fill-color: #94a3b8 !important;
+  opacity: 1 !important;
+}

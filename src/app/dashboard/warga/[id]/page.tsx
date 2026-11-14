@@ -1,4 +1,5 @@
-import { PrismaClient, type StatusBansos } from '@prisma/client'
+import { type StatusBansos } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 import { connection } from 'next/server'
 import Link from 'next/link'
@@ -33,8 +34,6 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import DeleteBansosButton from './DeleteBansosButton' // Komponen client kecil untuk SweetAlert hapus bansos
-
-const prisma = new PrismaClient()
 
 // Fungsi pembantu untuk merapikan teks menjadi Title Case yang profesional
 function formatTitleCase(str: string | null | undefined): string {
@@ -125,7 +124,7 @@ export default function DetailWargaPage({ params }: { params: Promise<{ id: stri
       fallback={
         <div className="flex items-center justify-center min-h-[50vh] w-full">
           <div className="flex items-center gap-3 bg-slate-900 text-white px-5 py-3 rounded-xl text-sm font-medium shadow-lg">
-            <div className="w-4 h-4 border-2 border-blue-300 border-t-transparent rounded-full animate-spin"></div>
+            <div className="w-4 h-4 border-2 border-emerald-300 border-t-transparent rounded-full animate-spin"></div>
             <span>Memuat data...</span>
           </div>
         </div>
@@ -286,7 +285,7 @@ async function DetailContent({ params }: { params: Promise<{ id: string }> }) {
       {/* Navigasi */}
       <Link
         href="/dashboard/warga"
-        className="inline-flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-blue-700 transition-colors rounded focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-600"
+        className="inline-flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-emerald-700 transition-colors rounded focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-emerald-600"
       >
         <ArrowLeft className="h-4 w-4" />
         Kembali ke daftar warga
@@ -294,13 +293,13 @@ async function DetailContent({ params }: { params: Promise<{ id: string }> }) {
 
       {/* Header profil */}
       <header className={`${cardClass} overflow-hidden`}>
-        <div className="h-24 sm:h-28 bg-gradient-to-r from-slate-900 via-slate-800 to-blue-800" />
+        <div className="h-24 sm:h-28 bg-gradient-to-r from-slate-900 via-slate-800 to-emerald-800" />
         <div className="px-6 sm:px-8 pb-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-5">
             {/* Hanya avatar yang menumpuk di atas banner */}
             <div
               className={`-mt-12 flex h-24 w-24 shrink-0 items-center justify-center rounded-2xl text-3xl font-semibold ring-4 ring-white shadow-sm sm:-mt-14 ${
-                isLaki ? 'bg-sky-100 text-sky-800' : 'bg-rose-100 text-rose-800'
+                isLaki ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
               }`}
               aria-hidden="true"
             >
@@ -308,12 +307,12 @@ async function DetailContent({ params }: { params: Promise<{ id: string }> }) {
             </div>
             <div className="min-w-0 flex-1 sm:pt-4">
               <div className="flex flex-wrap items-center gap-2.5">
-                <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
+                <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-800">
                   {formatTitleCase(warga.nama)}
                 </h1>
                 <span
                   className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                    isLaki ? 'bg-sky-50 text-sky-700 ring-1 ring-sky-200' : 'bg-rose-50 text-rose-700 ring-1 ring-rose-200'
+                    isLaki ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200' : 'bg-rose-50 text-rose-700 ring-1 ring-rose-200'
                   }`}
                 >
                   <GenderIcon className="h-3.5 w-3.5" />
@@ -337,7 +336,7 @@ async function DetailContent({ params }: { params: Promise<{ id: string }> }) {
             </div>
             <Link
               href={`/dashboard/warga/${warga.id}/edit`}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 sm:mt-4"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-emerald-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 sm:mt-4"
             >
               <Pencil className="h-4 w-4" />
               Edit data utama
@@ -347,7 +346,7 @@ async function DetailContent({ params }: { params: Promise<{ id: string }> }) {
           {/* Ringkasan singkat */}
           <dl className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="flex items-center gap-3 rounded-xl bg-slate-50 px-4 py-3">
-              <MapPin className="h-5 w-5 text-blue-600" />
+              <MapPin className="h-5 w-5 text-emerald-600" />
               <div>
                 <dt className="text-xs text-slate-500">Wilayah</dt>
                 <dd className="text-sm font-semibold text-slate-900">{namaDusun}</dd>
@@ -361,7 +360,7 @@ async function DetailContent({ params }: { params: Promise<{ id: string }> }) {
               </div>
             </div>
             <div className="flex items-center gap-3 rounded-xl bg-slate-50 px-4 py-3">
-              <Gift className="h-5 w-5 text-violet-600" />
+              <Gift className="h-5 w-5 text-teal-600" />
               <div>
                 <dt className="text-xs text-slate-500">Bantuan sosial</dt>
                 <dd className="text-sm font-semibold text-slate-900">{warga.bansos.length} program</dd>
@@ -444,7 +443,7 @@ async function DetailContent({ params }: { params: Promise<{ id: string }> }) {
           <section className={`${cardClass} p-6`}>
             <SectionTitle
               icon={UserRound}
-              tone="bg-blue-50 text-blue-600"
+              tone="bg-emerald-50 text-emerald-600"
               title="Identitas pribadi"
               desc="Data diri sesuai dokumen kependudukan."
             />
@@ -473,7 +472,7 @@ async function DetailContent({ params }: { params: Promise<{ id: string }> }) {
             <div className="flex flex-col justify-between gap-4 p-6 sm:flex-row sm:items-center">
               <SectionTitle
                 icon={Gift}
-                tone="bg-violet-50 text-violet-600"
+                tone="bg-teal-50 text-teal-600"
                 title="Bantuan sosial"
                 desc="Program bantuan pemerintah atau desa yang diterima."
               />
@@ -482,7 +481,7 @@ async function DetailContent({ params }: { params: Promise<{ id: string }> }) {
 
             {warga.bansos.length === 0 ? (
               <div className="mx-6 mb-6 flex flex-col items-center rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-6 py-10 text-center">
-                <span className="mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-violet-50 text-violet-500">
+                <span className="mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-teal-50 text-teal-500">
                   <Gift className="h-5 w-5" />
                 </span>
                 <p className="text-sm font-medium text-slate-900">Belum ada bansos tercatat</p>
@@ -557,7 +556,7 @@ async function DetailContent({ params }: { params: Promise<{ id: string }> }) {
             <SectionTitle icon={MapPinned} tone="bg-teal-50 text-teal-600" title="Kartu keluarga & wilayah" />
             <dl className="mt-6 space-y-5">
               <Field icon={CreditCard} label="Nomor KK" mono>
-                <span className="text-blue-700">{warga.kk?.noKk || '-'}</span>
+                <span className="text-emerald-700">{warga.kk?.noKk || '-'}</span>
               </Field>
               <Field icon={MapPin} label="Wilayah dusun">
                 {namaDusun}
@@ -574,7 +573,7 @@ async function DetailContent({ params }: { params: Promise<{ id: string }> }) {
               <div className="p-3">
                 <SectionTitle
                   icon={Users}
-                  tone="bg-sky-50 text-sky-600"
+                  tone="bg-emerald-50 text-emerald-600"
                   title={`Anggota keluarga (${warga.kk.anggota.length})`}
                   desc={`No. KK ${warga.kk.noKk}`}
                 />
@@ -589,13 +588,13 @@ async function DetailContent({ params }: { params: Promise<{ id: string }> }) {
                       <Link
                         href={`/dashboard/warga/${member.id}`}
                         aria-current={isCurrent ? 'page' : undefined}
-                        className={`flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors focus-visible:outline-2 focus-visible:outline-blue-600 ${
-                          isCurrent ? 'bg-blue-50 ring-1 ring-blue-100' : 'hover:bg-slate-50'
+                        className={`flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors focus-visible:outline-2 focus-visible:outline-emerald-600 ${
+                          isCurrent ? 'bg-emerald-50 ring-1 ring-emerald-100' : 'hover:bg-slate-50'
                         }`}
                       >
                         <span
                           className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
-                            memberLaki ? 'bg-sky-100 text-sky-800' : 'bg-rose-100 text-rose-800'
+                            memberLaki ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
                           }`}
                           aria-hidden="true"
                         >
@@ -607,7 +606,7 @@ async function DetailContent({ params }: { params: Promise<{ id: string }> }) {
                               {formatTitleCase(member.nama)}
                             </span>
                             {isCurrent && (
-                              <span className="shrink-0 rounded-full bg-blue-600 px-2 py-0.5 text-[11px] font-medium text-white">
+                              <span className="shrink-0 rounded-full bg-emerald-600 px-2 py-0.5 text-[11px] font-medium text-white">
                                 Warga ini
                               </span>
                             )}
@@ -615,7 +614,7 @@ async function DetailContent({ params }: { params: Promise<{ id: string }> }) {
                           <span className="block font-mono text-xs tabular-nums text-slate-500">{member.nik}</span>
                         </span>
                         <MemberGender
-                          className={`h-4 w-4 shrink-0 ${memberLaki ? 'text-sky-500' : 'text-rose-400'}`}
+                          className={`h-4 w-4 shrink-0 ${memberLaki ? 'text-emerald-500' : 'text-rose-400'}`}
                           aria-label={memberLaki ? 'Laki-laki' : 'Perempuan'}
                         />
                       </Link>

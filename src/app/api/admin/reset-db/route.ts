@@ -1,12 +1,10 @@
 import { NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 import bcrypt from 'bcryptjs'
 import { requireAdmin } from '@/lib/require-admin'
-
-const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient }
-const prisma = globalForPrisma.prisma ?? new PrismaClient()
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
+import { isSameOrigin, forbiddenOriginResponse } from '@/lib/same-origin'
+import { catatKejadianKeamanan } from '@/lib/audit'
 
 const KONFIRMASI = 'HAPUS SEMUA DATA'
 const MAX_GAGAL = 5
@@ -26,6 +24,21 @@ async function catat(userId: string, aksi: string, detail: Record<string, string
 }
 
 export async function POST(req: Request) {
+  if (!isSameOrigin(req)) {
+    await catatKejadianKeamanan({
+      aksi: 'SECURITY_AKSES_ILEGAL',
+      entitas: 'API Admin',
+      detail: {
+        sumber: 'reset database',
+        alasan: 'origin permintaan tidak valid (kemungkinan CSRF)',
+        origin: (req.headers.get('origin') || '').slice(0, 120),
+      },
+      ip: req.headers.get('x-forwarded-for')?.split(',')[0].trim() || null,
+      tingkat: 'KRITIS',
+    })
+    return forbiddenOriginResponse()
+  }
+
   // 0. Di server produksi fitur ini MATI, kecuali dinyalakan secara sengaja lewat ALLOW_DB_RESET=true
   if (process.env.NODE_ENV === 'production' && process.env.ALLOW_DB_RESET !== 'true') {
     return fail(403, 'Fitur ini dinonaktifkan di server produksi.')

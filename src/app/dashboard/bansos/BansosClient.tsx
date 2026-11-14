@@ -150,7 +150,7 @@ export default function BansosClient({
       {/* Header Halaman */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Manajemen Bantuan Sosial (Bansos)</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-800">Manajemen Bantuan Sosial (Bansos)</h1>
           <p className="text-sm text-slate-500">
             {isKadus
               ? `Kelola dan pantau data penyaluran bantuan sosial khusus wilayah ${user?.dusunNama || 'Dusun Anda'}.`
@@ -164,10 +164,10 @@ export default function BansosClient({
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-1">
           <span className="text-[11px] font-bold text-slate-400 uppercase">Total Keseluruhan</span>
           <div className="text-xl font-bold text-slate-900">{stats.totalKeseluruhan}</div>
-          <span className="text-[10px] text-blue-600 font-medium">Penerima Bansos</span>
+          <span className="text-[10px] text-emerald-600 font-medium">Penerima Bansos</span>
         </div>
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-1">
-          <span className="text-[11px] font-bold text-blue-600 uppercase">PKH</span>
+          <span className="text-[11px] font-bold text-emerald-600 uppercase">PKH</span>
           <div className="text-xl font-bold text-slate-900">{stats.totalPkh}</div>
           <span className="text-[10px] text-slate-400">Keluarga Harapan</span>
         </div>
@@ -182,7 +182,7 @@ export default function BansosClient({
           <span className="text-[10px] text-slate-400">Dana Desa</span>
         </div>
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-1">
-          <span className="text-[11px] font-bold text-purple-600 uppercase">PBI-JK</span>
+          <span className="text-[11px] font-bold text-teal-600 uppercase">PBI-JK</span>
           <div className="text-xl font-bold text-slate-900">{stats.totalPbiJk}</div>
           <span className="text-[10px] text-slate-400">Iuran Kesehatan</span>
         </div>
@@ -196,7 +196,7 @@ export default function BansosClient({
       {/* FILTER & PENCARIAN DATA BANSOS */}
       <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-3">
         <h2 className="text-xs font-bold text-slate-700 uppercase flex items-center gap-1.5">
-          <Search className="w-4 h-4 text-blue-600" />
+          <Search className="w-4 h-4 text-emerald-600" />
           <span>Filter Data Penyaluran</span>
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
@@ -206,7 +206,7 @@ export default function BansosClient({
               value={q}
               onChange={(e) => handleFilterChange('q', e.target.value)}
               placeholder="Cari nama warga / NIK..."
-              className="w-full px-3.5 py-2.5 bg-white text-slate-800 placeholder:text-slate-400 text-xs border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3.5 py-2.5 bg-white text-slate-800 placeholder:text-slate-400 text-xs border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
           <div>
@@ -253,7 +253,7 @@ export default function BansosClient({
         {isPending && (
           <div className="absolute inset-0 bg-white/70 backdrop-blur-xs z-30 flex items-center justify-center">
             <div className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2.5 rounded-xl text-xs font-bold shadow-lg">
-              <Loader2 className="w-4 h-4 animate-spin text-blue-400" />
+              <Loader2 className="w-4 h-4 animate-spin text-emerald-400" />
               <span>Memperbarui Data...</span>
             </div>
           </div>
@@ -315,7 +315,7 @@ export default function BansosClient({
                         <div className="flex items-center justify-center gap-2">
                           <Link
                             href={`/dashboard/warga/${b.wargaId}`}
-                            className="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold rounded-lg transition border border-blue-200 inline-flex items-center gap-1"
+                            className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold rounded-lg transition border border-emerald-200 inline-flex items-center gap-1"
                           >
                             <Eye className="w-3.5 h-3.5" /> Detail
                           </Link>
@@ -366,7 +366,7 @@ export default function BansosClient({
                   onClick={() => handlePageChange(num)}
                   className={`px-3 py-1.5 text-xs font-bold rounded-xl transition shadow-xs cursor-pointer ${
                     pagination.currentPage === num
-                      ? 'bg-blue-600 text-white shadow-blue-600/30'
+                      ? 'bg-emerald-600 text-white shadow-emerald-600/30'
                       : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-50'
                   }`}
                 >

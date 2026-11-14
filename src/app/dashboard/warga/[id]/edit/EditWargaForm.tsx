@@ -179,7 +179,7 @@ export default function EditWargaForm({
                 name="nik"
                 defaultValue={w.nik}
                 required
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono text-xs"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono text-xs"
               />
             </div>
 
@@ -192,7 +192,7 @@ export default function EditWargaForm({
                 defaultValue={w.noKk}
                 required
                 placeholder="Masukkan Nomor KK..."
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono text-xs bg-white text-slate-800"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono text-xs bg-white text-slate-800"
               />
             </div>
 
@@ -203,7 +203,7 @@ export default function EditWargaForm({
                 name="nama"
                 defaultValue={w.nama}
                 required
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:outline-none font-semibold text-slate-800 text-xs"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 focus:outline-none font-semibold text-slate-800 text-xs"
               />
             </div>
 
@@ -212,7 +212,7 @@ export default function EditWargaForm({
               <select
                 name="jenisKelamin"
                 defaultValue={w.jenisKelamin}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:outline-none text-xs bg-white"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 focus:outline-none text-xs bg-white"
               >
                 <option value="LAKI_LAKI">Laki-laki</option>
                 <option value="PEREMPUAN">Perempuan</option>
@@ -225,7 +225,7 @@ export default function EditWargaForm({
                 name="dusunId"
                 defaultValue={w.dusunId}
                 disabled={lockedDusunId !== null}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:outline-none text-xs bg-white"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 focus:outline-none text-xs bg-white"
               >
                 {dusunList.map((d) => (
                   <option key={d.id} value={d.id}>
@@ -241,7 +241,7 @@ export default function EditWargaForm({
                 type="text"
                 name="tempatLahir"
                 defaultValue={w.tempatLahir}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:outline-none text-xs"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 focus:outline-none text-xs"
               />
             </div>
 
@@ -252,7 +252,7 @@ export default function EditWargaForm({
                 name="tanggalLahir"
                 defaultValue={tanggalLahirValue}
                 required
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:outline-none text-xs"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 focus:outline-none text-xs"
               />
             </div>
 
@@ -261,7 +261,7 @@ export default function EditWargaForm({
               <select
                 name="agama"
                 defaultValue={matchOption(AGAMA_OPTIONS, w.agama, 'ISLAM')}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:outline-none text-xs bg-white"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 focus:outline-none text-xs bg-white"
               >
                 <option value="ISLAM">Islam</option>
                 <option value="KRISTEN">Kristen</option>
@@ -277,7 +277,7 @@ export default function EditWargaForm({
               <select
                 name="statusPerkawinan"
                 defaultValue={matchOption(STATUS_KAWIN_OPTIONS, w.statusPerkawinan, 'Belum Kawin')}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:outline-none text-xs bg-white"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 focus:outline-none text-xs bg-white"
               >
                 <option value="Belum Kawin">Belum Kawin</option>
                 <option value="Kawin">Kawin</option>
@@ -291,7 +291,7 @@ export default function EditWargaForm({
               <select
                 name="hubunganKeluarga"
                 defaultValue={matchOption(HUBUNGAN_OPTIONS, w.hubunganKeluarga, 'Kepala Keluarga')}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:outline-none text-xs bg-white"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 focus:outline-none text-xs bg-white"
               >
                 <option value="Kepala Keluarga">Kepala Keluarga</option>
                 <option value="Suami">Suami</option>
@@ -313,7 +313,7 @@ export default function EditWargaForm({
                 name="alamatKK"
                 defaultValue={w.alamatKK}
                 placeholder="Contoh: Desa Hulu Pancur Batu"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:outline-none text-xs"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 focus:outline-none text-xs"
               />
             </div>
 
@@ -322,7 +322,7 @@ export default function EditWargaForm({
               <select
                 name="pekerjaan"
                 defaultValue={pekerjaanValue}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:outline-none text-xs bg-white font-medium text-slate-800"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 focus:outline-none text-xs bg-white font-medium text-slate-800"
               >
                 {pekerjaanLama && <option value={pekerjaanLama}>{pekerjaanLama} (data lama)</option>}
                 {DAFTAR_PEKERJAAN_RESMI.map((pek) => (
@@ -345,7 +345,7 @@ export default function EditWargaForm({
           <button
             type="submit"
             disabled={saving}
-            className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow-sm transition flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+            className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-xl shadow-sm transition flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {saving ? 'Menyimpan…' : '💾 Simpan Perubahan'}
           </button>

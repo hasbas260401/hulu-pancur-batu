@@ -49,7 +49,7 @@ export default function BansosFormModal({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow-sm transition inline-flex items-center gap-2"
+        className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-xl shadow-sm transition inline-flex items-center gap-2"
       >
         <span>+ Tambah Bantuan</span>
       </button>
@@ -107,7 +107,7 @@ export default function BansosFormModal({
                 required
                 value={selectedProgram}
                 onChange={(e) => setSelectedProgram(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"
               >
                 <option value="" disabled>-- Pilih Program Bansos --</option>
                 {DAFTAR_BANSOS_NASIONAL.map((b) => (
@@ -125,7 +125,7 @@ export default function BansosFormModal({
                   name="program_manual"
                   required
                   placeholder="Ketik nama bansos khusus..."
-                  className="w-full px-3 py-2 rounded-xl border border-blue-300 bg-blue-50/30 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none font-medium"
+                  className="w-full px-3 py-2 rounded-xl border border-emerald-300 bg-emerald-50/30 text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none font-medium"
                 />
               </div>
             )}
@@ -136,7 +136,7 @@ export default function BansosFormModal({
                 <select
                   name="bulan"
                   defaultValue="Januari"
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                 >
                   {DAFTAR_BULAN.map((bln) => (
                     <option key={bln} value={bln}>{bln}</option>
@@ -155,7 +155,7 @@ export default function BansosFormModal({
                   defaultValue="2026"
                   required
                   placeholder="Contoh: 2026"
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono"
                 />
               </div>
             </div>
@@ -197,7 +197,7 @@ export default function BansosFormModal({
             <button
               type="submit"
               disabled={saving}
-              className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow-sm transition inline-flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+              className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-xl shadow-sm transition inline-flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
               {saving ? 'Menyimpan…' : 'Simpan & Daftarkan Bansos'}

@@ -333,3 +333,25 @@ model ApiKey {
   updatedAt   DateTime    @updatedAt
   lastUsedAt  DateTime?
 }
+
+// PENGATURAN WHATSAPP GATEWAY (notifikasi otomatis status surat)
+// Baris tunggal (id = 1). Token disimpan di database dan hanya ditampilkan
+// dalam bentuk tersamarkan di UI; tidak pernah dikirim utuh ke browser.
+
+model PengaturanWhatsApp {
+  id           Int      @id @default(1)
+  apiUrl       String   @default("https://api.fonnte.com/send")
+  token        String?
+  senderNumber String?
+  enabled      Boolean  @default(false)
+  format       String   @default("form") // "form" (Fonnte) atau "json" (gateway generik)
+  // Cara token dikirim ke gateway:
+  //   "auto"    -> format form: Authorization: <token> (Fonnte)
+  //                format json: Authorization: Bearer <token> (standar REST)
+  //   "bearer"  -> Authorization: Bearer <token>
+  //   "x-api-key" -> header x-api-key: <token>
+  //   "raw"     -> Authorization: <token> (Fonnte/gateway yang minta token apa adanya)
+  //   "body"    -> token disertakan di body payload (form/JSON) sebagai "token"
+  authType     String   @default("auto")
+  updatedAt    DateTime @updatedAt
+}

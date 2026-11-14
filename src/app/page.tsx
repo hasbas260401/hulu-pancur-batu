@@ -1,7 +1,10 @@
 import { Suspense } from "react";
+import { connection } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { getLandingContent } from "@/lib/landing-content";
+import { applyCommunityStats, getCommunityStats } from "@/lib/community-stats";
+import { applyBudgetBreakdown, getBudgetBreakdown } from "@/lib/budget";
 import HomeClient from "./HomeClient";
 
 /**
@@ -25,12 +28,18 @@ export default function Page() {
 }
 
 async function LandingContent() {
-  const settings = await prisma.webSettings
-    .findFirst()
-    .catch((error) => {
+  // Statistik kependudukan harus selalu segar, jadi halaman dirender dinamis
+  // setiap request (kerangka halaman tetap tampil lewat <Suspense>).
+  await connection();
+
+  const [settings, stats, budget] = await Promise.all([
+    prisma.webSettings.findFirst().catch((error) => {
       console.error("Gagal memuat konten halaman depan:", error);
       return null;
-    });
+    }),
+    getCommunityStats(),
+    getBudgetBreakdown(),
+  ]);
 
   const setting = {
     namaDesa: settings?.namaDesa || "Desa Hulu Pancur Batu",
@@ -38,7 +47,9 @@ async function LandingContent() {
     logoDesa: settings?.logoDesa || "/logo-desa.png",
   };
 
-  const content = getLandingContent(settings);
+  const baseContent = getLandingContent(settings);
+  const withStats = stats ? applyCommunityStats(baseContent, stats) : baseContent;
+  const content = applyBudgetBreakdown(withStats, budget);
 
   return <HomeClient setting={setting} content={content} />;
 }

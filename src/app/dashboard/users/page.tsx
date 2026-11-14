@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import { redirect } from 'next/navigation'
 import { Suspense } from 'react'
 import FormUserManagement from './FormUserManagement'
@@ -17,8 +17,6 @@ import {
   AlertCircle,
   CheckCircle2
 } from 'lucide-react'
-
-const prisma = new PrismaClient()
 
 // Pesan hasil aksi (kode pendek di URL, teksnya ditentukan di sini)
 const NOTICES: Record<string, { type: 'success' | 'error'; text: string }> = {
@@ -58,7 +56,7 @@ export default function UsersPage({
       fallback={
         <div className="flex items-center justify-center min-h-[50vh] w-full">
           <div className="flex items-center gap-3 bg-slate-900 text-white px-5 py-3 rounded-xl text-xs font-bold shadow-lg">
-            <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+            <div className="w-4 h-4 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin"></div>
             <span>Memuat data...</span>
           </div>
         </div>
@@ -166,7 +164,7 @@ async function UsersContent({
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200/60 pb-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">Manajemen User & Kadus</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-800">Manajemen User & Kadus</h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-0.5">Kelola akun warga, Kepala Dusun (Kadus), serta atur hak akses menu sistem secara terpusat.</p>
         </div>
       </div>
@@ -187,7 +185,7 @@ async function UsersContent({
                 </>
               ) : (
                 <>
-                  <div className="p-1.5 bg-blue-50 text-blue-600 rounded-lg border border-blue-200">
+                  <div className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg border border-emerald-200">
                     <UserPlus className="w-3.5 h-3.5" />
                   </div>
                   <span>Tambah User Baru</span>
@@ -197,7 +195,7 @@ async function UsersContent({
             {userToEdit && (
               <a
                 href="/dashboard/users"
-                className="text-xs text-blue-600 font-bold hover:underline inline-flex items-center gap-1 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-100"
+                className="text-xs text-emerald-600 font-bold hover:underline inline-flex items-center gap-1 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-100"
               >
                 <UserPlus className="w-3 h-3" /> Buat Baru
               </a>
@@ -219,7 +217,7 @@ async function UsersContent({
               <h2 className="text-sm font-bold text-slate-800">Daftar Akun & Hak Akses Menu</h2>
               <p className="text-[11px] text-slate-400">Total keseluruhan: {totalUsers} akun terdaftar di database</p>
             </div>
-            <span className="px-3 py-1 bg-blue-50 text-blue-700 text-[11px] font-extrabold rounded-full border border-blue-100">
+            <span className="px-3 py-1 bg-emerald-50 text-emerald-700 text-[11px] font-extrabold rounded-full border border-emerald-100">
               Kontrol Keamanan Desa
             </span>
           </div>
@@ -253,13 +251,13 @@ async function UsersContent({
                                 ? 'bg-rose-50 text-rose-700 border border-rose-200' 
                                 : user.role === 'KADUS' 
                                 ? 'bg-amber-50 text-amber-700 border border-amber-200' 
-                                : 'bg-blue-50 text-blue-700 border border-blue-200'
+                                : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                             }`}>
                               {user.role}
                             </span>
 
                             {user.role === 'KADUS' && (
-                              <span className="inline-block px-2 py-0.5 text-[10px] font-bold rounded-md bg-blue-50 text-blue-700 border border-blue-200 inline-flex items-center gap-1">
+                              <span className="inline-block px-2 py-0.5 text-[10px] font-bold rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 inline-flex items-center gap-1">
                                 <MapPin className="w-3 h-3" /> {user.dusun?.nama || `Dusun ${user.dusun?.nomor || '-'}`}
                               </span>
                             )}

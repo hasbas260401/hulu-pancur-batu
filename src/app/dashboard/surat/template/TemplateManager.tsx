@@ -27,7 +27,7 @@ interface TemplateItem {
 
 const labelCls = 'block font-bold text-slate-700 uppercase mb-1'
 const inputCls =
-  'w-full px-3.5 py-2.5 bg-slate-50 text-slate-800 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none font-medium'
+  'w-full px-3.5 py-2.5 bg-slate-50 text-slate-800 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:bg-white outline-none font-medium'
 
 /* ---------- Dialog konfirmasi hapus (<dialog> bawaan browser) ---------- */
 
@@ -278,7 +278,7 @@ export default function TemplateManager({
                   name="file"
                   accept=".docx"
                   required
-                  className="w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer border border-slate-200 rounded-xl p-1 bg-slate-50"
+                  className="w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer border border-slate-200 rounded-xl p-1 bg-slate-50"
                 />
                 <p className="mt-1 text-[11px] text-slate-400">Format .docx, ukuran maksimal 5 MB.</p>
               </div>
@@ -309,7 +309,7 @@ export default function TemplateManager({
         {loadingList && (
           <div className="absolute inset-0 bg-white/60 flex items-center justify-center z-10">
             <div className="inline-flex items-center gap-2 bg-slate-900 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md">
-              <Loader2 className="w-4 h-4 animate-spin text-blue-400" /> Memuat daftar template...
+              <Loader2 className="w-4 h-4 animate-spin text-emerald-400" /> Memuat daftar template...
             </div>
           </div>
         )}
@@ -347,7 +347,7 @@ export default function TemplateManager({
                         <a
                           href={t.filePath}
                           download
-                          className="text-blue-600 hover:text-blue-700 font-semibold text-xs inline-flex items-center gap-1.5"
+                          className="text-emerald-600 hover:text-emerald-700 font-semibold text-xs inline-flex items-center gap-1.5"
                         >
                           <Download className="w-3.5 h-3.5" /> Unduh Template (.docx)
                         </a>
@@ -437,7 +437,7 @@ export default function TemplateManager({
             type="button"
             onClick={() => setMessage(null)}
             aria-label="Tutup notifikasi"
-            className="shrink-0 rounded text-slate-400 transition-colors hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+            className="shrink-0 rounded text-slate-400 transition-colors hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600"
           >
             <X className="h-4 w-4" />
           </button>

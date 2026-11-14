@@ -1,13 +1,24 @@
 'use server'
 
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 import { auth } from '@/auth'
 import { revalidatePath } from 'next/cache'
 import { headers } from 'next/headers'
 import { generateApiKey } from '@/lib/api-key'
-
-const prisma = new PrismaClient()
+import {
+  getWhatsAppConfig,
+  isAuthTypeWhatsApp,
+  isWhatsAppAktif,
+  kirimWhatsApp,
+  maskToken,
+  normalisasiNomorWhatsApp,
+  resolveAuthType,
+  whatsAppGatewayHost,
+  type AuthTypeWhatsApp,
+  type WhatsAppConfig,
+} from '@/lib/whatsapp'
+import { gatewayBaseUrl } from '@/lib/whatsapp-gateway'
 
 // 1. GANTI PASSWORD
 export async function updatePassword(prevState: any, formData: FormData) {
@@ -26,8 +37,12 @@ export async function updatePassword(prevState: any, formData: FormData) {
     return { success: false, message: 'Konfirmasi password baru tidak cocok.' }
   }
 
-  if (newPassword.length < 6) {
-    return { success: false, message: 'Password baru minimal harus 6 karakter.' }
+  if (newPassword.length < 8) {
+    return { success: false, message: 'Password baru minimal 8 karakter.' }
+  }
+  if (newPassword.length > 72) {
+    // Batas bcrypt: hanya 72 byte pertama yang diproses.
+    return { success: false, message: 'Password baru maksimal 72 karakter.' }
   }
 
   try {
@@ -52,7 +67,18 @@ export async function updatePassword(prevState: any, formData: FormData) {
       data: { passwordHash: newPasswordHash },
     })
 
-    return { success: true, message: 'Password berhasil diperbarui!' }
+    // Setelah password diganti, sesi di perangkat lain dicabut. Sesi yang
+    // sedang dipakai tetap aktif agar pengguna tidak langsung ter-logout.
+    const currentSessionId = (session.user as any).sessionId as string | undefined
+    await prisma.userSession.deleteMany({
+      where: {
+        userId: user.id,
+        ...(currentSessionId ? { id: { not: currentSessionId } } : {}),
+      },
+    })
+
+    revalidatePath('/dashboard/settings')
+    return { success: true, message: 'Password berhasil diperbarui! Perangkat lain telah dikeluarkan.' }
   } catch (error) {
     console.error('Error update password:', error)
     return { success: false, message: 'Terjadi kesalahan pada server.' }
@@ -64,12 +90,16 @@ export async function updatePhone(prevState: any, formData: FormData) {
   const session = await auth()
   if (!session?.user?.id) return { success: false, message: 'Unauthorized' }
 
-  const noWhatsapp = formData.get('noWhatsapp') as string
+  const raw = String(formData.get('noWhatsapp') ?? '').replace(/[\s-]/g, '')
+  if (raw && !/^\+?[0-9]{8,15}$/.test(raw)) {
+    return { success: false, message: 'Nomor WhatsApp tidak valid. Gunakan angka, contoh 081234567890.' }
+  }
+  const noWhatsapp = raw || null
 
   try {
     await prisma.user.update({
       where: { id: session.user.id },
-      data: { noWhatsapp: noWhatsapp || null },
+      data: { noWhatsapp },
     })
 
     revalidatePath('/dashboard/settings')
@@ -106,7 +136,6 @@ export async function revokeSession(sessionId: string) {
     return { success: false, message: 'Gagal mencabut sesi perangkat.' }
   }
 }
-
 
 // =====================================================================
 // 4. API KEY INTEGRASI DATA (khusus ADMIN)
@@ -218,5 +247,204 @@ export async function toggleApiKeyAction(jenis: string, isActive: boolean) {
   } catch (error) {
     console.error('Error toggle API key:', error)
     return { success: false, message: 'Gagal mengubah status API Key.' }
+  }
+}
+
+// =====================================================================
+// 5. WHATSAPP GATEWAY (khusus ADMIN)
+// =====================================================================
+
+export type WhatsAppConfigView = {
+  enabled: boolean
+  apiUrl: string
+  senderNumber: string | null
+  format: 'form' | 'json'
+  authType: AuthTypeWhatsApp
+  hasToken: boolean
+  tokenMasked: string | null
+  gatewayUrl: string | null
+}
+
+export type SimpanWhatsAppResult = {
+  success: boolean
+  message: string
+  config?: WhatsAppConfigView
+}
+
+function keView(config: WhatsAppConfig): WhatsAppConfigView {
+  return {
+    enabled: config.enabled,
+    apiUrl: config.apiUrl,
+    senderNumber: config.senderNumber,
+    format: config.format,
+    authType: config.authType,
+    hasToken: Boolean(config.token),
+    tokenMasked: maskToken(config.token),
+    gatewayUrl: gatewayBaseUrl(config.apiUrl),
+  }
+}
+
+/** Pastikan pemanggil ADMIN; pesan error disesuaikan untuk pengaturan WA. */
+async function pastikanAdminWa() {
+  const admin = await requireAdmin()
+  if (!admin.ok) {
+    return { ok: false as const, message: 'Hanya admin yang dapat mengubah pengaturan WhatsApp.' }
+  }
+  return admin
+}
+
+async function catatAuditWa(
+  userId: string,
+  aksi: string,
+  entitasId: string,
+  detail: Record<string, string | number | boolean | null>,
+  ip: string | null
+) {
+  try {
+    await prisma.auditLog.create({
+      data: { userId, aksi, entitas: 'PengaturanWhatsApp', entitasId, detail, ip },
+    })
+  } catch (error) {
+    console.error('Gagal mencatat audit log WhatsApp:', error)
+  }
+}
+
+/** Simpan konfigurasi WhatsApp Gateway ke database. */
+export async function simpanPengaturanWhatsApp(formData: FormData): Promise<SimpanWhatsAppResult> {
+  const admin = await pastikanAdminWa()
+  if (!admin.ok) return { success: false, message: admin.message }
+
+  const apiUrl = String(formData.get('apiUrl') ?? '').trim().slice(0, 500)
+  if (!apiUrl) return { success: false, message: 'API URL wajib diisi.' }
+
+  try {
+    const parsed = new URL(apiUrl)
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') throw new Error('protokol')
+  } catch {
+    return { success: false, message: 'API URL tidak valid. Gunakan alamat http:// atau https://.' }
+  }
+
+  const tokenInput = String(formData.get('token') ?? '').trim()
+  if (tokenInput.length > 500) {
+    return { success: false, message: 'Token terlalu panjang (maksimal 500 karakter).' }
+  }
+
+  const senderRaw = String(formData.get('senderNumber') ?? '').trim()
+  let senderNumber: string | null = null
+  if (senderRaw) {
+    senderNumber = normalisasiNomorWhatsApp(senderRaw)
+    if (!senderNumber) {
+      return {
+        success: false,
+        message: 'Sender Number tidak valid. Gunakan nomor Indonesia, contoh 081234567890.',
+      }
+    }
+  }
+
+  const format = formData.get('format') === 'json' ? 'json' : 'form'
+  const authInput = formData.get('authType')
+  const authType: AuthTypeWhatsApp = isAuthTypeWhatsApp(authInput) ? authInput : 'auto'
+  const enabled = String(formData.get('enabled')) === 'true'
+
+  try {
+    const existing = await prisma.pengaturanWhatsApp.findUnique({ where: { id: 1 } })
+    // Token kosong = pertahankan token lama (agar admin tidak perlu mengetik ulang).
+    const tokenFinal = tokenInput || existing?.token || null
+
+    if (enabled && !tokenFinal) {
+      return {
+        success: false,
+        message: 'Isi token gateway terlebih dahulu sebelum mengaktifkan notifikasi.',
+      }
+    }
+
+    await prisma.pengaturanWhatsApp.upsert({
+      where: { id: 1 },
+      create: { id: 1, apiUrl, token: tokenFinal, senderNumber, enabled, format, authType },
+      update: { apiUrl, token: tokenFinal, senderNumber, enabled, format, authType },
+    })
+
+    await catatAuditWa(
+      admin.userId,
+      'UBAH_PENGATURAN_WA',
+      '1',
+      {
+        gateway: whatsAppGatewayHost(apiUrl),
+        sender_number: senderNumber,
+        format,
+        auth_type: authType,
+        auth_efektif: resolveAuthType({ format, authType }),
+        enabled,
+        token_diubah: Boolean(tokenInput),
+      },
+      admin.ip
+    )
+
+    const saved = await getWhatsAppConfig()
+    revalidatePath('/dashboard/settings')
+
+    return {
+      success: true,
+      message: enabled
+        ? 'Pengaturan WhatsApp tersimpan dan notifikasi diaktifkan.'
+        : 'Pengaturan WhatsApp tersimpan. Notifikasi saat ini nonaktif.',
+      config: keView(saved),
+    }
+  } catch (error) {
+    console.error('Error menyimpan pengaturan WhatsApp:', error)
+    return { success: false, message: 'Gagal menyimpan pengaturan WhatsApp.' }
+  }
+}
+
+/** Kirim pesan uji ke nomor tertentu memakai konfigurasi yang tersimpan. */
+export async function ujiKirimWhatsApp(
+  formData: FormData
+): Promise<{ success: boolean; message: string }> {
+  const admin = await pastikanAdminWa()
+  if (!admin.ok) return { success: false, message: admin.message }
+
+  const target = String(formData.get('target') ?? '').trim()
+  if (!target) return { success: false, message: 'Masukkan nomor WhatsApp tujuan uji coba.' }
+
+  try {
+    const config = await getWhatsAppConfig()
+    if (!isWhatsAppAktif(config)) {
+      return {
+        success: false,
+        message: 'Notifikasi WhatsApp belum aktif. Simpan API URL dan token lalu centang Status Notifikasi.',
+      }
+    }
+
+    const hasil = await kirimWhatsApp({
+      nomor: target,
+      pesan:
+        '*SIDU — Uji Notifikasi WhatsApp*\n\n' +
+        'Jika Anda menerima pesan ini, integrasi WhatsApp Gateway pada sistem SIDU berhasil.\n\n' +
+        'Pesan ini dikirim otomatis oleh sistem. Mohon tidak dibalas.',
+    })
+
+    await catatAuditWa(
+      admin.userId,
+      'UJI_WA_GATEWAY',
+      '1',
+      {
+        hasil: hasil.status,
+        nomor_tujuan: hasil.nomorTujuan ?? null,
+        alasan: hasil.alasan ?? null,
+      },
+      admin.ip
+    )
+
+    if (hasil.status === 'terkirim') {
+      return { success: true, message: `Pesan uji berhasil dikirim ke ${hasil.nomorTujuan}.` }
+    }
+
+    return {
+      success: false,
+      message: `Pesan uji tidak terkirim: ${hasil.alasan ?? 'gateway menolak permintaan.'}`,
+    }
+  } catch (error) {
+    console.error('Error uji WhatsApp:', error)
+    return { success: false, message: 'Terjadi kesalahan saat mengirim pesan uji.' }
   }
 }

@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import { connection } from 'next/server'
 import { redirect } from 'next/navigation'
 import { Suspense } from 'react'
@@ -8,10 +8,6 @@ import TemplateManager from './TemplateManager'
 import { getSessionUser } from '@/lib/require-admin'
 import { Zap, ClipboardList, FileText } from 'lucide-react'
 
-const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient }
-const prisma = globalForPrisma.prisma ?? new PrismaClient()
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
-
 const PAGE_SIZE = 3
 
 export default function TemplateSuratPage() {
@@ -20,7 +16,7 @@ export default function TemplateSuratPage() {
       fallback={
         <div className="flex items-center justify-center min-h-[50vh] w-full">
           <div className="flex items-center gap-3 bg-slate-900 text-white px-5 py-3 rounded-xl text-xs font-bold shadow-lg">
-            <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+            <div className="w-4 h-4 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin"></div>
             <span>Memuat data...</span>
           </div>
         </div>
@@ -53,13 +49,13 @@ async function TemplateContent() {
       {/* Header Halaman */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-800 tracking-tight">Manajemen Template Surat</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-800">Manajemen Template Surat</h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-0.5">Upload dan kelola master template surat desa (.docx) untuk generate otomatis.</p>
         </div>
         <div className="flex items-center gap-2.5 flex-wrap">
           <Link
             href="/dashboard/surat/buat"
-            className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-semibold rounded-xl shadow-xs transition inline-flex items-center gap-2 cursor-pointer"
+            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-semibold rounded-xl shadow-xs transition inline-flex items-center gap-2 cursor-pointer"
           >
             <Zap className="w-4 h-4" /> Buat / Generate Surat
           </Link>
@@ -81,7 +77,7 @@ async function TemplateContent() {
           canManage ? (
           <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4 h-full">
             <div className="border-b border-slate-100 pb-3 flex items-center gap-2">
-              <FileText className="w-4 h-4 text-blue-600" />
+              <FileText className="w-4 h-4 text-emerald-600" />
               <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wide">
                 Tag Placeholder Word (.docx)
               </h2>

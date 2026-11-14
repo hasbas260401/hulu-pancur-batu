@@ -1,14 +1,30 @@
 import NextAuth, { CredentialsSignin } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
-import { PrismaClient } from '@prisma/client'
+import { cache } from 'react'
+import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 import crypto from 'crypto'
 import { rateLimit, clientIp } from '@/lib/rate-limit'
-
-const prisma = new PrismaClient()
+import { catatKejadianKeamanan, deteksiPayloadMencurigakan } from '@/lib/audit'
 
 const MAX_GAGAL = 5 // salah password 5x berturut-turut -> akun dikunci sementara
 const KUNCI_MENIT = 15
+
+/**
+ * Pemeriksaan sesi ke database, di-cache per request.
+ *
+ * Satu kali membuka halaman dashboard bisa memanggil `auth()` beberapa kali
+ * (proxy, layout, halaman, dan pengecekan scope). Tanpa cache, setiap
+ * pemanggilan menembak satu query `userSession`. Dengan `cache()` dari React,
+ * query yang sama hanya dijalankan sekali untuk satu request, sehingga jumlah
+ * query ke PostgreSQL tidak bertambah mengikuti jumlah pemanggilan `auth()`.
+ *
+ * Cache ini hanya berlaku selama satu request dan tidak pernah membocorkan
+ * sesi antar pengguna. Pencabutan sesi tetap berlaku pada request berikutnya.
+ */
+const getActiveSession = cache(async (sessionId: string) => {
+  return prisma.userSession.findUnique({ where: { id: sessionId } })
+})
 
 /**
  * Kode kesalahan login yang aman dikirim ke halaman login.
@@ -61,6 +77,14 @@ function isActiveStatus(status: string | null | undefined) {
   return status === 'ACTIVE' || status === 'AKTIF'
 }
 
+// Warga dengan akun PENDING tetap boleh login agar bisa melihat dashboard-nya,
+// tetapi menu lain dikunci sampai admin memverifikasi. Akun DITOLAK/NONAKTIF
+// (dan akun non-warga yang belum aktif) tetap tidak boleh masuk.
+function canLogin(status: string | null | undefined, role: string) {
+  if (isActiveStatus(status)) return true
+  return status === 'PENDING' && role === 'WARGA'
+}
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   trustHost: true,
   providers: [
@@ -79,9 +103,44 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const password = String(credentials.password)
 
         const ip = request ? clientIp(request) : 'unknown'
+
+        // Catat upaya injeksi payload pada formulir login. Autentikasi tetap
+        // diproses seperti biasa; pencatatan hanya untuk sinyal keamanan.
+        const polaUsername = deteksiPayloadMencurigakan(username)
+        const polaPassword = deteksiPayloadMencurigakan(password)
+        if (polaUsername || polaPassword) {
+          await catatKejadianKeamanan({
+            aksi: 'SECURITY_INJEKSI_PAYLOAD',
+            entitas: 'Login',
+            detail: {
+              sumber: 'form login',
+              username: username.slice(0, 80),
+              parameter: [polaUsername ? 'username' : null, polaPassword ? 'password' : null]
+                .filter(Boolean)
+                .join(', '),
+              pola: polaUsername ?? polaPassword,
+            },
+            ip: ip === 'unknown' ? null : ip,
+            tingkat: 'TINGGI',
+          })
+        }
+
         if (ip !== 'unknown') {
           const rl = rateLimit(`login-ip:${ip}`, 20, 15 * 60 * 1000)
-          if (!rl.ok) throw new TooManyAttemptsError()
+          if (!rl.ok) {
+            await catatKejadianKeamanan({
+              aksi: 'SECURITY_LOGIN_DIBLOKIR',
+              entitas: 'Login',
+              detail: {
+                username: username.slice(0, 80),
+                alasan: 'terlalu banyak percobaan login dari IP yang sama',
+                coba_lagi_detik: rl.retryAfterSec,
+              },
+              ip,
+              tingkat: 'TINGGI',
+            })
+            throw new TooManyAttemptsError()
+          }
         }
 
         const user = await prisma.user.findUnique({
@@ -92,28 +151,63 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const isPasswordValid = await bcrypt.compare(password, user?.passwordHash ?? DUMMY_HASH)
 
         if (!user || !user.passwordHash) {
+          await catatKejadianKeamanan({
+            aksi: 'SECURITY_LOGIN_GAGAL',
+            entitas: 'Login',
+            detail: {
+              username: username.slice(0, 80),
+              alasan: 'username tidak terdaftar',
+            },
+            ip: ip === 'unknown' ? null : ip,
+          })
           throw new InvalidCredentialsError()
         }
 
         // Akun sedang dikunci
         if (user.lockedUntil && user.lockedUntil > new Date()) {
+          await catatKejadianKeamanan({
+            userId: user.id,
+            aksi: 'SECURITY_AKUN_TERKUNCI',
+            entitas: 'Login',
+            entitasId: user.id,
+            detail: {
+              username: user.username,
+              dikunci_sampai: user.lockedUntil.toISOString(),
+            },
+            ip: ip === 'unknown' ? null : ip,
+            tingkat: 'TINGGI',
+          })
           throw new AccountLockedError()
         }
 
         if (!isPasswordValid) {
           const gagal = user.failedLogin + 1
+          const akanDikunci = gagal >= MAX_GAGAL
           await prisma.user.update({
             where: { id: user.id },
-            data:
-              gagal >= MAX_GAGAL
-                ? { failedLogin: 0, lockedUntil: new Date(Date.now() + KUNCI_MENIT * 60 * 1000) }
-                : { failedLogin: gagal },
+            data: akanDikunci
+              ? { failedLogin: 0, lockedUntil: new Date(Date.now() + KUNCI_MENIT * 60 * 1000) }
+              : { failedLogin: gagal },
+          })
+          await catatKejadianKeamanan({
+            userId: user.id,
+            aksi: 'SECURITY_LOGIN_GAGAL',
+            entitas: 'Login',
+            entitasId: user.id,
+            detail: {
+              username: user.username,
+              alasan: 'kata sandi salah',
+              percobaan_ke: gagal,
+              akun_dikunci: akanDikunci,
+            },
+            ip: ip === 'unknown' ? null : ip,
+            tingkat: akanDikunci ? 'TINGGI' : 'PERINGATAN',
           })
           throw new InvalidCredentialsError()
         }
 
         // Akun belum aktif / pending / non-aktif
-        if (!isActiveStatus(user.statusAkun)) {
+        if (!canLogin(user.statusAkun, user.role)) {
           throw new AccountInactiveError()
         }
 
@@ -140,10 +234,30 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           },
         })
 
+        // Catat aktivitas login berhasil agar riwayat aktivitas lengkap.
+        try {
+          await prisma.auditLog.create({
+            data: {
+              userId: user.id,
+              aksi: 'LOGIN',
+              entitas: 'User',
+              entitasId: user.id,
+              detail: {
+                username: user.username,
+                perangkat: userAgent.slice(0, 150),
+              },
+              ip: ipAddress === 'Tidak diketahui' ? null : ipAddress,
+            },
+          })
+        } catch (error) {
+          console.error('Gagal mencatat audit login:', error)
+        }
+
         return {
           id: user.id,
           name: user.warga?.nama || user.username,
           role: user.role,
+          statusAkun: user.statusAkun || 'PENDING',
           dusunId: user.dusunId,
           dusunNama: user.dusun?.nama || null,
           permissions: user.permissions || [],
@@ -160,6 +274,18 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (!sessionId) return
       try {
         await prisma.userSession.deleteMany({ where: { id: sessionId } })
+        const userId = (message as any)?.token?.id as string | undefined
+        if (userId) {
+          await prisma.auditLog.create({
+            data: {
+              userId,
+              aksi: 'LOGOUT',
+              entitas: 'User',
+              entitasId: userId,
+              detail: {},
+            },
+          })
+        }
       } catch (error) {
         console.error('Gagal mencabut sesi saat logout:', error)
       }
@@ -170,6 +296,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (user) {
         token.id = user.id
         token.role = (user as any).role
+        token.statusAkun = (user as any).statusAkun
         token.dusunId = (user as any).dusunId
         token.dusunNama = (user as any).dusunNama
         token.permissions = (user as any).permissions
@@ -180,9 +307,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (!token.sessionId) return null as any
 
       // Sesi sudah dicabut / kedaluwarsa → logout otomatis
-      const active = await prisma.userSession.findUnique({
-        where: { id: token.sessionId as string },
-      })
+      const active = await getActiveSession(token.sessionId as string)
       if (!active || active.expiresAt < new Date()) return null as any
 
       return token
@@ -191,6 +316,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (session.user) {
         ;(session.user as any).id = (token.id ?? token.sub) as string
         ;(session.user as any).role = token.role
+        // Token lama (sebelum statusAkun disimpan) dianggap aktif; akun PENDING
+        // baru selalu membawa status ini sejak login.
+        ;(session.user as any).statusAkun = (token.statusAkun as string) || 'ACTIVE'
         ;(session.user as any).dusunId = token.dusunId
         ;(session.user as any).dusunNama = token.dusunNama
         ;(session.user as any).permissions = token.permissions

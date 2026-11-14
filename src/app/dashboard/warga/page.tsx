@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { connection } from 'next/server'
@@ -17,8 +17,6 @@ import {
 
 type StatusWarga = 'AKTIF' | 'MENINGGAL' | 'PINDAH'
 
-const prisma = new PrismaClient()
-
 export default function DataWargaPage({
   searchParams,
 }: {
@@ -36,7 +34,7 @@ export default function DataWargaPage({
       fallback={
         <div className="flex items-center justify-center min-h-[50vh] w-full">
           <div className="flex items-center gap-3 bg-slate-900 text-white px-5 py-3 rounded-xl text-xs font-bold shadow-lg">
-            <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+            <div className="w-4 h-4 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin"></div>
             <span>Memuat data...</span>
           </div>
         </div>
@@ -155,7 +153,7 @@ async function WargaContent({
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Data Kependudukan Warga</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-800">Data Kependudukan Warga</h1>
           <p className="text-sm text-slate-500 mt-0.5">
             {isKadus
               ? `Menampilkan data warga khusus wilayah penugasan ${user?.dusunNama || 'Dusun Anda'}.`
@@ -173,7 +171,7 @@ async function WargaContent({
 
           <Link
             href="/dashboard/warga/tambah"
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow-xs transition"
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-xl shadow-xs transition"
           >
             <UserPlus className="w-4 h-4" /> Tambah Warga Baru
           </Link>
@@ -194,7 +192,7 @@ async function WargaContent({
             href={`/dashboard/warga?status=AKTIF`}
             className={`px-5 py-3 text-xs sm:text-sm font-bold border-b-2 transition flex items-center gap-2 ${
               statusTab === 'AKTIF'
-                ? 'border-blue-600 text-blue-600'
+                ? 'border-emerald-600 text-emerald-600'
                 : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >

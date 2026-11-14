@@ -391,6 +391,27 @@ export async function GET(
 
   const { id } = await params
 
+  const sessionUserId = (session.user as any)?.id as string | undefined
+  if (!sessionUserId) {
+    return NextResponse.json(
+      { error: 'Sesi Anda telah berakhir. Silakan masuk kembali.' },
+      { status: 401, headers: NO_STORE }
+    )
+  }
+
+  // Peran dan kepemilikan dibaca dari DATABASE (bukan dari token), agar perubahan
+  // peran/dusun langsung berlaku dan surat tidak bisa diunduh lintas pengguna.
+  const dbUser = await prisma.user.findUnique({
+    where: { id: sessionUserId },
+    select: { role: true, dusunId: true, wargaId: true, permissions: true },
+  })
+  if (!dbUser) {
+    return NextResponse.json(
+      { error: 'Sesi Anda telah berakhir. Silakan masuk kembali.' },
+      { status: 401, headers: NO_STORE }
+    )
+  }
+
   const surat = await prisma.pengajuanSurat.findUnique({
     where: { id },
     include: {
@@ -400,7 +421,17 @@ export async function GET(
     },
   })
 
-  if (!surat) {
+  // Surat milik pengguna lain diperlakukan sama seperti "tidak ditemukan"
+  // agar keberadaan berkas tidak bisa ditebak lewat percobaan ID.
+  const bolehAkses =
+    dbUser.role === 'ADMIN' ||
+    (dbUser.role === 'KADUS' &&
+      dbUser.permissions.includes('surat') &&
+      dbUser.dusunId !== null &&
+      surat?.dusunId === dbUser.dusunId) ||
+    (dbUser.role === 'WARGA' && dbUser.wargaId !== null && surat?.wargaId === dbUser.wargaId)
+
+  if (!surat || !bolehAkses) {
     return NextResponse.json(
       { error: 'Data surat tidak ditemukan.' },
       { status: 404, headers: NO_STORE }
@@ -444,9 +475,12 @@ export async function GET(
     // Simpan salinan agar tombol unduh berikutnya tetap cepat dan konsisten.
     if (surat.filePath) {
       const pdfRelative = surat.filePath.replace(/\.docx$/i, '.pdf')
-      if (pdfRelative !== surat.filePath) {
+      const publicDir = path.join(process.cwd(), 'public')
+      const outputPath = path.join(publicDir, pdfRelative)
+      const rel = path.relative(publicDir, outputPath)
+      const safeOutput = !!rel && !rel.startsWith('..') && !path.isAbsolute(rel)
+      if (pdfRelative !== surat.filePath && safeOutput) {
         try {
-          const outputPath = path.join(process.cwd(), 'public', pdfRelative)
           await fs.mkdir(path.dirname(outputPath), { recursive: true })
           await fs.writeFile(outputPath, pdfBytes)
         } catch (error) {

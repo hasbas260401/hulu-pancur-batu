@@ -93,7 +93,7 @@ export default function FormUploadExcel() {
             required
             disabled={uploading}
             onChange={(e) => setFile(e.target.files?.[0] || null)}
-            className="w-full text-xs text-slate-500 file:mr-2 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer disabled:opacity-50"
+            className="w-full text-xs text-slate-500 file:mr-2 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer disabled:opacity-50"
           />
           <button
             type="submit"
@@ -124,7 +124,7 @@ export default function FormUploadExcel() {
           </div>
           <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden border border-slate-200">
             <div
-              className="bg-blue-600 h-2.5 rounded-full transition-all duration-300 ease-out"
+              className="bg-emerald-600 h-2.5 rounded-full transition-all duration-300 ease-out"
               style={{ width: `${progress}%` }}
             ></div>
           </div>

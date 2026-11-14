@@ -76,7 +76,7 @@ export default function InstallPWABanner() {
       {/* BANNER NOTIFIKASI INSTALL (Tampil Mengambang di Bawah Layar HP) */}
       <div className="fixed bottom-4 left-4 right-4 z-[9999] md:max-w-md md:left-auto border border-slate-800 bg-slate-900 text-white p-4 rounded-2xl shadow-2xl flex items-center justify-between gap-3 animate-in slide-in-from-bottom-5 duration-300">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-blue-600/20 text-blue-400 rounded-xl flex items-center justify-center shrink-0 border border-blue-500/30">
+          <div className="w-10 h-10 bg-emerald-600/20 text-emerald-400 rounded-xl flex items-center justify-center shrink-0 border border-emerald-500/30">
             <Smartphone className="w-5 h-5" />
           </div>
           <div>
@@ -89,7 +89,7 @@ export default function InstallPWABanner() {
           <button
             type="button"
             onClick={handleInstallClick}
-            className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer"
+            className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer"
           >
             <Download className="w-3.5 h-3.5" />
             <span>Install</span>
@@ -110,14 +110,14 @@ export default function InstallPWABanner() {
       {showIOSInstruction && (
         <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/70 backdrop-blur-xs p-4">
           <div className="bg-slate-900 border border-slate-800 text-white rounded-3xl p-6 max-w-sm w-full shadow-2xl space-y-4 text-center">
-            <div className="w-12 h-12 bg-blue-600/20 text-blue-400 rounded-2xl flex items-center justify-center mx-auto border border-blue-500/30">
+            <div className="w-12 h-12 bg-emerald-600/20 text-emerald-400 rounded-2xl flex items-center justify-center mx-auto border border-emerald-500/30">
               <Share className="w-6 h-6" />
             </div>
             
             <div className="space-y-1">
               <h3 className="text-sm font-bold text-white">Cara Install di iPhone (Safari)</h3>
               <p className="text-xs text-slate-400 leading-relaxed">
-                1. Klik tombol <strong className="text-white">Bagikan (Share / <Share className="w-3.5 h-3.5 inline text-blue-400" />)</strong> di bagian bawah Safari.<br />
+                1. Klik tombol <strong className="text-white">Bagikan (Share / <Share className="w-3.5 h-3.5 inline text-emerald-400" />)</strong> di bagian bawah Safari.<br />
                 2. Gulir ke bawah lalu pilih <strong className="text-white font-bold">"Tambah ke Layar Utama"</strong>.
               </p>
             </div>

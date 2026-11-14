@@ -170,14 +170,14 @@ export default function FilterWargaBar() {
     <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
       <div className="flex items-center justify-between border-b border-slate-100 pb-3">
         <div className="flex items-center gap-2 text-xs font-bold text-slate-800 uppercase tracking-wider">
-          <Search className="w-4 h-4 text-blue-600" /> Filter & Pencarian Data Kependudukan Lanjutan
+          <Search className="w-4 h-4 text-emerald-600" /> Filter & Pencarian Data Kependudukan Lanjutan
         </div>
         <span className="text-[11px] text-slate-400 font-medium">Data terfilter otomatis secara instan</span>
       </div>
 
       <div className="space-y-3 text-xs">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
-          <div className="lg:col-span-10 flex rounded-xl border border-slate-200 overflow-hidden bg-slate-50 focus-within:ring-2 focus-within:ring-blue-500 focus-within:bg-white transition">
+          <div className="lg:col-span-10 flex rounded-xl border border-slate-200 overflow-hidden bg-slate-50 focus-within:ring-2 focus-within:ring-emerald-500 focus-within:bg-white transition">
             <select
               value={mode}
               onChange={(e) => {
@@ -227,7 +227,7 @@ export default function FilterWargaBar() {
                 setAgama(e.target.value)
                 updateFilters({ agama: e.target.value })
               }}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
             >
               <option value="">-- Semua Agama --</option>
               <option value="ISLAM">Islam</option>
@@ -247,7 +247,7 @@ export default function FilterWargaBar() {
                 setPekerjaan(e.target.value)
                 updateFilters({ pekerjaan: e.target.value })
               }}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
             >
               <option value="">-- Semua Pekerjaan (Dukcapil) --</option>
               {DAFTAR_PEKERJAAN_RESMI.map((pek, index) => (
@@ -266,7 +266,7 @@ export default function FilterWargaBar() {
                 setBantuan(e.target.value)
                 updateFilters({ bantuan: e.target.value })
               }}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
             >
               <option value="">-- Semua Status Bansos --</option>
               {DAFTAR_BANSOS_FILTER.map((item) => (

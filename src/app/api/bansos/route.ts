@@ -1,10 +1,7 @@
 import { NextResponse } from 'next/server'
-import { PrismaClient, type Prisma, type StatusBansos } from '@prisma/client'
+import { type Prisma, type StatusBansos } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import { getBansosScope } from '@/lib/warga-scope'
-
-const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient }
-const prisma = globalForPrisma.prisma ?? new PrismaClient()
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
 
 const NO_STORE = { 'Cache-Control': 'no-store' }
 const STATUS_VALID = ['AKTIF', 'SELESAI', 'DICABUT']

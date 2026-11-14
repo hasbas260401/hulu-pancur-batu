@@ -1,10 +1,9 @@
 import { NextResponse } from 'next/server'
-import { PrismaClient, type Prisma, type StatusBansos } from '@prisma/client'
+import { type Prisma, type StatusBansos } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import { verifyApiKey } from '@/lib/api-key'
-
-const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient }
-const prisma = globalForPrisma.prisma ?? new PrismaClient()
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
+import { catatKejadianKeamanan, periksaParameterMencurigakan } from '@/lib/audit'
+import { clientIp } from '@/lib/rate-limit'
 
 const STATUS_VALID = ['AKTIF', 'SELESAI', 'DICABUT']
 const NO_STORE = { 'Cache-Control': 'no-store' }
@@ -15,6 +14,25 @@ export async function GET(req: Request) {
 
   try {
     const { searchParams } = new URL(req.url)
+
+    const mencurigakan = periksaParameterMencurigakan(searchParams)
+    if (mencurigakan) {
+      await catatKejadianKeamanan({
+        aksi: 'SECURITY_INJEKSI_PAYLOAD',
+        entitas: 'API Eksternal',
+        detail: {
+          sumber: 'API data bansos',
+          parameter: mencurigakan.parameter,
+          pola: mencurigakan.pola,
+        },
+        ip: clientIp(req) === 'unknown' ? null : clientIp(req),
+        tingkat: 'TINGGI',
+      })
+      return NextResponse.json(
+        { error: 'Parameter permintaan tidak valid.' },
+        { status: 400, headers: NO_STORE }
+      )
+    }
 
     const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1)
     const limit = Math.min(500, Math.max(1, parseInt(searchParams.get('limit') || '100', 10) || 100))

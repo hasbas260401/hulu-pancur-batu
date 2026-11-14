@@ -1,12 +1,10 @@
 import { NextResponse } from 'next/server'
-import { PrismaClient, JenisKelamin } from '@prisma/client'
+import { JenisKelamin } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 import * as XLSX from 'xlsx'
 import { getWargaScope } from '@/lib/warga-scope'
-
-const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient }
-const prisma = globalForPrisma.prisma ?? new PrismaClient()
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
+import { isSameOrigin, forbiddenOriginResponse } from '@/lib/same-origin'
 
 const MAX_SIZE = 5 * 1024 * 1024 // 5 MB
 const MAX_ROWS = 5000
@@ -32,6 +30,8 @@ function parseExcelDate(value: any): Date {
 }
 
 export async function POST(req: Request) {
+  if (!isSameOrigin(req)) return forbiddenOriginResponse()
+
   // Wajib login, wajib ADMIN/KADUS
   const scope = await getWargaScope()
   if (!scope.ok) return fail(scope.status, scope.message)

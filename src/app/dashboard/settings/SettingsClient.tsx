@@ -17,6 +17,10 @@ import {
   Copy,
   Check,
   Info,
+  ShieldAlert,
+  ScrollText,
+  Database,
+  MessageCircle,
   type LucideIcon,
 } from 'lucide-react'
 import {
@@ -25,7 +29,13 @@ import {
   revokeSession,
   generateApiKeyAction,
   toggleApiKeyAction,
+  simpanPengaturanWhatsApp,
+  ujiKirimWhatsApp,
+  type WhatsAppConfigView,
 } from './actions'
+import ResetDbModal from './ResetDbModal'
+import WhatsAppGatewayClient from '../whatsapp/WhatsAppGatewayClient'
+import type { AuthTypeWhatsApp } from '@/lib/whatsapp'
 
 type SessionItem = {
   id: string
@@ -44,12 +54,20 @@ type ApiKeyItem = {
   lastUsedAt: string | null
 }
 
-type TabKey = 'password' | 'email' | 'phone' | 'sessions' | 'api'
+type TabKey =
+  | 'password'
+  | 'email'
+  | 'phone'
+  | 'sessions'
+  | 'api'
+  | 'whatsapp'
+  | 'audit'
+  | 'advanced'
 
 const TABS: { key: TabKey; label: string; icon: LucideIcon }[] = [
   { key: 'password', label: 'Kata Sandi', icon: KeyRound },
   { key: 'email', label: 'Email', icon: Mail },
-  { key: 'phone', label: 'WhatsApp', icon: Phone },
+  { key: 'phone', label: 'WhatsApp Pribadi', icon: Phone },
   { key: 'sessions', label: 'Perangkat Aktif', icon: Laptop },
 ]
 
@@ -58,6 +76,27 @@ const API_TAB: { key: TabKey; label: string; icon: LucideIcon } = {
   key: 'api',
   label: 'Integrasi API',
   icon: Plug,
+}
+
+// Tab pengaturan lanjutan: hanya ADMIN (zona berbahaya + tautan audit)
+const ADVANCED_TAB: { key: TabKey; label: string; icon: LucideIcon } = {
+  key: 'advanced',
+  label: 'Keamanan & Data',
+  icon: ShieldAlert,
+}
+
+// Tab konfigurasi WhatsApp Gateway: hanya ADMIN
+const WHATSAPP_TAB: { key: TabKey; label: string; icon: LucideIcon } = {
+  key: 'whatsapp',
+  label: 'WhatsApp Gateway',
+  icon: MessageCircle,
+}
+
+// Tab Audit Log: hanya ADMIN, ditanam langsung di area Pengaturan.
+const AUDIT_TAB: { key: TabKey; label: string; icon: LucideIcon } = {
+  key: 'audit',
+  label: 'Audit Log',
+  icon: ScrollText,
 }
 
 type DocParam = { name: string; desc: string }
@@ -84,14 +123,18 @@ const API_JENIS: ApiJenisConfig[] = [
     jenis: 'WARGA',
     title: 'Data Warga',
     path: '/api/external/warga',
-    desc: 'Daftar warga beserta NIK, nomor KK, alamat, dan dusun.',
-    params: 'page, limit (maks. 500), status (AKTIF, PINDAH, MENINGGAL, SEMUA)',
+    desc: 'Daftar warga beserta NIK, nomor KK, alamat, dan dusun. NIK disamarkan secara bawaan.',
+    params: 'page, limit (maks. 500), status (AKTIF, PINDAH, MENINGGAL, SEMUA), nik (masked, full)',
     docParams: [
       ...PAGING_PARAMS,
       { name: 'status', desc: 'Filter status warga: AKTIF (bawaan), PINDAH, MENINGGAL, atau SEMUA.' },
+      {
+        name: 'nik',
+        desc: 'Bentuk NIK pada respons: masked (bawaan, mis. 1200********0001) atau full (NIK lengkap). Gunakan full hanya bila benar-benar diperlukan.',
+      },
     ],
     fields: [
-      { name: 'nik', type: 'string', desc: 'Nomor Induk Kependudukan.' },
+      { name: 'nik', type: 'string', desc: 'Nomor Induk Kependudukan. Disamarkan kecuali memakai parameter nik=full.' },
       { name: 'nama', type: 'string', desc: 'Nama lengkap.' },
       { name: 'jenisKelamin', type: 'string', desc: 'LAKI_LAKI atau PEREMPUAN.' },
       { name: 'tempatLahir', type: 'string | null', desc: 'Tempat lahir.' },
@@ -110,7 +153,7 @@ const API_JENIS: ApiJenisConfig[] = [
     example: {
       data: [
         {
-          nik: '1200000000000001',
+          nik: '1200********0001',
           nama: 'NAMA CONTOH',
           jenisKelamin: 'LAKI_LAKI',
           tempatLahir: 'Medan',
@@ -127,7 +170,7 @@ const API_JENIS: ApiJenisConfig[] = [
           dusun: 'Dusun II',
         },
       ],
-      meta: { page: 1, limit: 100, total: 250, totalPages: 3, status: 'AKTIF' },
+      meta: { page: 1, limit: 100, total: 250, totalPages: 3, status: 'AKTIF', nik: 'masked' },
     },
   },
   {
@@ -185,6 +228,7 @@ const STATUS_CODES: [string, string][] = [
 const KETENTUAN: string[] = [
   'Gunakan koneksi HTTPS dan panggil API dari server Anda, bukan dari aplikasi web atau mobile yang dapat dilihat pengguna.',
   'Data memuat informasi pribadi warga (termasuk NIK). Gunakan hanya untuk keperluan yang disepakati dan lindungi sesuai UU No. 27 Tahun 2022 tentang Pelindungan Data Pribadi.',
+  'NIK dikembalikan dalam bentuk tersamar (mis. 1200********0001). Tambahkan parameter nik=full hanya bila NIK utuh benar-benar diperlukan.',
   'Admin desa dapat menonaktifkan atau mengganti API Key kapan saja. Key lama langsung tidak berlaku.',
 ]
 
@@ -245,12 +289,12 @@ function formatLogin(iso: string) {
 /* ---------- Gaya bersama ---------- */
 
 const focusRing =
-  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2'
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2'
 
 const inputCls =
-  'block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-base text-slate-900 shadow-xs placeholder:text-slate-400 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20 disabled:bg-slate-100 disabled:text-slate-500 sm:text-sm'
+  'block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-base text-slate-900 shadow-xs placeholder:text-slate-400 focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-600/20 disabled:bg-slate-100 disabled:text-slate-500 sm:text-sm'
 
-const btnPrimary = `inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-xs transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60 ${focusRing}`
+const btnPrimary = `inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-xs transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60 ${focusRing}`
 
 const btnSecondary = `inline-flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-xs transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 ${focusRing}`
 
@@ -342,7 +386,7 @@ function PasswordField({
           type="button"
           onClick={() => setShow((s) => !s)}
           aria-label={show ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}
-          className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-slate-400 transition-colors hover:text-slate-600 focus-visible:text-blue-600 focus-visible:outline-none"
+          className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-slate-400 transition-colors hover:text-slate-600 focus-visible:text-emerald-600 focus-visible:outline-none"
         >
           {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
         </button>
@@ -483,7 +527,7 @@ function ApiKeySection({
               onClick={() => onOpenDocs(cfg.jenis)}
               aria-label={`Lihat dokumentasi API ${cfg.title} untuk vendor`}
               title="Dokumentasi untuk vendor"
-              className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-blue-50 hover:text-blue-600 ${focusRing}`}
+              className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-emerald-50 hover:text-emerald-600 ${focusRing}`}
             >
               <Info className="h-4 w-4" aria-hidden="true" />
             </button>
@@ -850,12 +894,21 @@ export default function SettingsClient({
   sessions,
   isAdmin,
   apiKeys: initialApiKeys,
+  resetEnabled,
+  initialTab = 'password',
+  waConfig,
+  auditPanel,
 }: {
   sessions: SessionItem[]
   isAdmin: boolean
   apiKeys: ApiKeyItem[]
+  resetEnabled: boolean
+  initialTab?: TabKey
+  waConfig: WhatsAppConfigView
+  /** Panel Audit Log yang sudah dirender server (khusus ADMIN). */
+  auditPanel: React.ReactNode
 }) {
-  const [activeTab, setActiveTab] = useState<TabKey>('password')
+  const [activeTab, setActiveTab] = useState<TabKey>(initialTab)
 
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [loading, setLoading] = useState(false)
@@ -876,11 +929,25 @@ export default function SettingsClient({
   const [origin, setOrigin] = useState('')
   const [docJenis, setDocJenis] = useState<JenisApi | null>(null)
 
+  // Pengaturan WhatsApp Gateway (hanya ADMIN)
+  const [wa, setWa] = useState<WhatsAppConfigView>(waConfig)
+  const [waApiUrl, setWaApiUrl] = useState(waConfig.apiUrl)
+  const [waToken, setWaToken] = useState('')
+  const [waSender, setWaSender] = useState(waConfig.senderNumber ?? '')
+  const [waFormat, setWaFormat] = useState<'form' | 'json'>(waConfig.format)
+  const [waAuthType, setWaAuthType] = useState<AuthTypeWhatsApp>(waConfig.authType)
+  const [waEnabled, setWaEnabled] = useState(waConfig.enabled)
+  const [waSaving, setWaSaving] = useState(false)
+  const [waTestTarget, setWaTestTarget] = useState('')
+  const [waTesting, setWaTesting] = useState(false)
+
   useEffect(() => {
     setOrigin(window.location.origin)
   }, [])
 
-  const visibleTabs = isAdmin ? [...TABS, API_TAB] : TABS
+  const visibleTabs = isAdmin
+    ? [...TABS, API_TAB, WHATSAPP_TAB, AUDIT_TAB, ADVANCED_TAB]
+    : TABS
 
   function showNotification(type: 'success' | 'error', text: string) {
     if (timer.current) clearTimeout(timer.current)
@@ -913,6 +980,54 @@ export default function SettingsClient({
       showNotification('success', res.message)
     } else {
       showNotification('error', res.message)
+    }
+  }
+
+  async function handleWhatsAppSave(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    setWaSaving(true)
+    try {
+      const formData = new FormData()
+      formData.set('apiUrl', waApiUrl)
+      formData.set('token', waToken)
+      formData.set('senderNumber', waSender)
+      formData.set('format', waFormat)
+      formData.set('authType', waAuthType)
+      formData.set('enabled', waEnabled ? 'true' : 'false')
+
+      const res = await simpanPengaturanWhatsApp(formData)
+      if (res.success) {
+        showNotification('success', res.message)
+        setWaToken('')
+        if (res.config) {
+          setWa(res.config)
+          setWaApiUrl(res.config.apiUrl)
+          setWaSender(res.config.senderNumber ?? '')
+          setWaFormat(res.config.format)
+          setWaAuthType(res.config.authType)
+          setWaEnabled(res.config.enabled)
+        }
+      } else {
+        showNotification('error', res.message)
+      }
+    } finally {
+      setWaSaving(false)
+    }
+  }
+
+  async function handleWhatsAppTest() {
+    if (!waTestTarget.trim()) {
+      showNotification('error', 'Masukkan nomor WhatsApp tujuan untuk uji coba.')
+      return
+    }
+    setWaTesting(true)
+    try {
+      const formData = new FormData()
+      formData.set('target', waTestTarget)
+      const res = await ujiKirimWhatsApp(formData)
+      showNotification(res.success ? 'success' : 'error', res.message)
+    } finally {
+      setWaTesting(false)
     }
   }
 
@@ -1038,7 +1153,7 @@ export default function SettingsClient({
   return (
     <div className="mx-auto max-w-5xl pb-12">
       <header className="mb-8">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-800">
           Pengaturan Akun & Keamanan
         </h1>
         <p className="mt-1.5 text-sm text-slate-600">
@@ -1059,11 +1174,11 @@ export default function SettingsClient({
                 aria-current={active ? 'true' : undefined}
                 className={`flex items-center gap-2.5 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors ${focusRing} ${
                   active
-                    ? 'bg-white text-blue-700 shadow-xs ring-1 ring-slate-200'
+                    ? 'bg-white text-emerald-700 shadow-xs ring-1 ring-slate-200'
                     : 'text-slate-600 hover:bg-slate-200/60 hover:text-slate-900'
                 }`}
               >
-                <Icon className={`h-4 w-4 ${active ? 'text-blue-600' : 'text-slate-400'}`} aria-hidden="true" />
+                <Icon className={`h-4 w-4 ${active ? 'text-emerald-600' : 'text-slate-400'}`} aria-hidden="true" />
                 {label}
               </button>
             )
@@ -1091,7 +1206,7 @@ export default function SettingsClient({
                       id="new-password"
                       name="newPassword"
                       label="Kata sandi baru"
-                      placeholder="Minimal 6 karakter"
+                      placeholder="Minimal 8 karakter"
                       autoComplete="new-password"
                       hint="Gabungkan huruf dan angka agar lebih sulit ditebak."
                     />
@@ -1172,7 +1287,7 @@ export default function SettingsClient({
                           onChange={(e) => setOtpInput(e.target.value.replace(/\D/g, ''))}
                           placeholder="000000"
                           aria-describedby="otp-hint"
-                          className="block w-full max-w-[12rem] rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-center text-lg font-semibold tabular-nums tracking-[0.4em] text-slate-900 shadow-xs placeholder:font-normal placeholder:text-slate-300 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
+                          className="block w-full max-w-[12rem] rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-center text-lg font-semibold tabular-nums tracking-[0.4em] text-slate-900 shadow-xs placeholder:font-normal placeholder:text-slate-300 focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-600/20"
                         />
                       </Field>
                     )}
@@ -1282,6 +1397,276 @@ export default function SettingsClient({
                   />
                 ))}
               </div>
+            </section>
+          )}
+
+          {/* ---------- WhatsApp Gateway (ADMIN) ---------- */}
+          {activeTab === 'whatsapp' && isAdmin && (
+            <section className="overflow-hidden rounded-xl bg-white shadow-xs ring-1 ring-slate-200">
+              <PanelHeader
+                title="WhatsApp Gateway"
+                description="Konfigurasi pengiriman notifikasi otomatis ke WhatsApp warga. Pengaturan disimpan di database dan langsung dipakai saat status surat diubah menjadi Selesai atau Ditolak."
+              />
+              <PanelBody>
+                {/* Monitor koneksi real-time (status, QR, nomor, connect/logout) */}
+                <div className="mb-6">
+                  <WhatsAppGatewayClient
+                    embedded
+                    config={{
+                      apiUrl: wa.apiUrl,
+                      hasToken: wa.hasToken,
+                      tokenMasked: wa.tokenMasked,
+                      senderNumber: wa.senderNumber,
+                      enabled: wa.enabled,
+                      gatewayUrl: wa.gatewayUrl,
+                    }}
+                  />
+                </div>
+
+                <div className="mb-5 border-t border-slate-200 pt-5">
+                  <p className="text-sm font-bold text-slate-900">Konfigurasi API Gateway</p>
+                  <p className="mt-0.5 text-xs leading-relaxed text-slate-600">
+                    Pengaturan disimpan di database dan langsung dipakai saat status surat diubah
+                    menjadi Selesai atau Ditolak.
+                  </p>
+                </div>
+
+                <form onSubmit={handleWhatsAppSave} className="space-y-5">
+                  <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50/70 p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">Status Notifikasi</p>
+                      <p className="mt-0.5 text-xs leading-relaxed text-slate-600">
+                        Aktifkan setelah API URL dan token terisi. Bila nonaktif, perubahan status
+                        surat tetap tersimpan tanpa mengirim WhatsApp.
+                      </p>
+                    </div>
+                    <label className="inline-flex shrink-0 cursor-pointer items-center gap-2.5">
+                      <input
+                        type="checkbox"
+                        checked={waEnabled}
+                        onChange={(e) => setWaEnabled(e.target.checked)}
+                        className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-600"
+                      />
+                      <span
+                        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ring-1 ring-inset ${
+                          waEnabled && wa.hasToken
+                            ? 'bg-emerald-50 text-emerald-700 ring-emerald-600/20'
+                            : 'bg-amber-50 text-amber-700 ring-amber-600/20'
+                        }`}
+                      >
+                        {waEnabled && wa.hasToken ? (
+                          <CheckCircle2 className="h-3 w-3" aria-hidden="true" />
+                        ) : (
+                          <AlertCircle className="h-3 w-3" aria-hidden="true" />
+                        )}
+                        {waEnabled && wa.hasToken ? 'Aktif' : 'Belum aktif'}
+                      </span>
+                    </label>
+                  </div>
+
+                  <div>
+                    <label htmlFor="wa-api-url" className="mb-1.5 block text-xs font-semibold text-slate-700">
+                      API URL <span className="text-rose-600">*</span>
+                    </label>
+                    <input
+                      id="wa-api-url"
+                      type="url"
+                      required
+                      value={waApiUrl}
+                      onChange={(e) => setWaApiUrl(e.target.value)}
+                      placeholder="https://api.fonnte.com/send"
+                      className={inputCls}
+                    />
+                    <p className="mt-1 text-[11px] text-slate-500">
+                      Endpoint POST gateway. Bawaan Fonnte: <code className="font-mono">https://api.fonnte.com/send</code>.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div>
+                      <label htmlFor="wa-token" className="mb-1.5 block text-xs font-semibold text-slate-700">
+                        Token / API Key
+                      </label>
+                      <input
+                        id="wa-token"
+                        type="password"
+                        value={waToken}
+                        onChange={(e) => setWaToken(e.target.value)}
+                        placeholder={
+                          wa.hasToken
+                            ? `Tersimpan (${wa.tokenMasked ?? '••••'}) — kosongkan untuk mempertahankan`
+                            : 'Masukkan token gateway'
+                        }
+                        autoComplete="new-password"
+                        className={inputCls}
+                      />
+                      <p className="mt-1 text-[11px] text-slate-500">
+                        Token disimpan di database dan tidak pernah dikirim utuh ke browser.
+                      </p>
+                    </div>
+
+                    <div>
+                      <label htmlFor="wa-sender" className="mb-1.5 block text-xs font-semibold text-slate-700">
+                        Sender Number
+                      </label>
+                      <input
+                        id="wa-sender"
+                        type="tel"
+                        value={waSender}
+                        onChange={(e) => setWaSender(e.target.value)}
+                        placeholder="081234567890"
+                        className={inputCls}
+                      />
+                      <p className="mt-1 text-[11px] text-slate-500">
+                        Nomor perangkat pengirim. Disimpan dalam format 62… dan dikirim sebagai
+                        <code className="mx-1 font-mono">sender</code> bila gateway mendukung.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div>
+                      <label htmlFor="wa-format" className="mb-1.5 block text-xs font-semibold text-slate-700">
+                        Format Body Permintaan
+                      </label>
+                      <select
+                        id="wa-format"
+                        value={waFormat}
+                        onChange={(e) => setWaFormat(e.target.value === 'json' ? 'json' : 'form')}
+                        className={inputCls}
+                      >
+                        <option value="form">form-urlencoded (Fonnte)</option>
+                        <option value="json">JSON (gateway generik)</option>
+                      </select>
+                      <p className="mt-1 text-[11px] text-slate-500">
+                        Pilih sesuai dokumentasi gateway. JSON mengirim{' '}
+                        <code className="font-mono">{'{ target, message, sender }'}</code>.
+                      </p>
+                    </div>
+
+                    <div>
+                      <label htmlFor="wa-auth" className="mb-1.5 block text-xs font-semibold text-slate-700">
+                        Metode Autentikasi Token
+                      </label>
+                      <select
+                        id="wa-auth"
+                        value={waAuthType}
+                        onChange={(e) =>
+                          setWaAuthType(
+                            ['auto', 'bearer', 'x-api-key', 'raw', 'body'].includes(e.target.value)
+                              ? (e.target.value as AuthTypeWhatsApp)
+                              : 'auto'
+                          )
+                        }
+                        className={inputCls}
+                      >
+                        <option value="auto">Otomatis (form: raw, JSON: Bearer)</option>
+                        <option value="bearer">Authorization: Bearer &lt;token&gt;</option>
+                        <option value="x-api-key">Header x-api-key</option>
+                        <option value="raw">Authorization: &lt;token&gt; (Fonnte)</option>
+                        <option value="body">Token di body payload</option>
+                      </select>
+                      <p className="mt-1 text-[11px] text-slate-500">
+                        Gunakan <strong>Bearer</strong> atau <strong>x-api-key</strong> untuk gateway
+                        yang diproteksi API key.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end border-t border-slate-200 pt-4">
+                    <button type="submit" disabled={waSaving} className={btnPrimary}>
+                      {waSaving ? <Spinner /> : <Check className="h-4 w-4" aria-hidden="true" />}
+                      {waSaving ? 'Menyimpan…' : 'Simpan Pengaturan'}
+                    </button>
+                  </div>
+                </form>
+
+                <div className="mt-6 space-y-3 border-t border-slate-200 pt-5">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">Kirim Pesan Uji</p>
+                    <p className="mt-0.5 text-xs leading-relaxed text-slate-600">
+                      Pastikan konfigurasi benar sebelum dipakai. Pesan uji dikirim ke nomor tujuan di
+                      bawah ini (bukan ke nomor pengirim).
+                    </p>
+                  </div>
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <input
+                      type="tel"
+                      value={waTestTarget}
+                      onChange={(e) => setWaTestTarget(e.target.value)}
+                      placeholder="Contoh: 081234567890"
+                      className={`${inputCls} sm:max-w-xs`}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleWhatsAppTest}
+                      disabled={waTesting}
+                      className={btnSecondary}
+                    >
+                      {waTesting ? <Spinner /> : <MessageCircle className="h-4 w-4" aria-hidden="true" />}
+                      {waTesting ? 'Mengirim…' : 'Kirim Uji'}
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-slate-500">
+                    Hasil pengiriman juga dicatat di Audit Log. Kegagalan gateway tidak mengubah data
+                    surat apa pun.
+                  </p>
+                </div>
+              </PanelBody>
+            </section>
+          )}
+
+          {/* ---------- Audit Log (ADMIN) ---------- */}
+          {activeTab === 'audit' && isAdmin && (
+            <section className="overflow-hidden rounded-xl bg-white shadow-xs ring-1 ring-slate-200">
+              <PanelHeader
+                title="Audit Log"
+                description="Riwayat aktivitas pengguna dan admin, termasuk percobaan akses mencurigakan. Catatan audit tidak dapat diubah atau dihapus dari antarmuka ini."
+              />
+              <div className="p-5 sm:p-6">{auditPanel}</div>
+            </section>
+          )}
+
+          {/* ---------- Keamanan & Data (ADMIN) ---------- */}
+          {activeTab === 'advanced' && isAdmin && (
+            <section className="overflow-hidden rounded-xl bg-white shadow-xs ring-1 ring-slate-200">
+              <PanelHeader
+                title="Keamanan & Data"
+                description="Pengaturan lanjutan khusus administrator untuk pemeliharaan data yang bersifat permanen."
+              />
+              <PanelBody>
+                <div className="space-y-4">
+                  <div className="rounded-xl border border-rose-200 bg-rose-50/50 p-5">
+                    <div className="flex items-start gap-3">
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-rose-100 text-rose-600">
+                        <Database className="h-5 w-5" aria-hidden="true" />
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold text-rose-900">Zona Berbahaya</p>
+                        <p className="mt-1 text-xs leading-relaxed text-rose-800">
+                          Mengosongkan database akan menghapus permanen data warga, Kartu Keluarga,
+                          penerima bansos, dan riwayat pengajuan surat. Tindakan ini memerlukan
+                          konfirmasi dua lapis serta kata sandi akun admin Anda.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-4">
+                      {resetEnabled ? (
+                        <ResetDbModal />
+                      ) : (
+                        <p className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600">
+                          Fitur ini dinonaktifkan di server produksi. Nyalakan{' '}
+                          <code className="rounded bg-slate-100 px-1 py-0.5 font-mono text-[11px]">
+                            ALLOW_DB_RESET=true
+                          </code>{' '}
+                          hanya bila benar-benar diperlukan.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </PanelBody>
             </section>
           )}
 
@@ -1400,7 +1785,7 @@ export default function SettingsClient({
             type="button"
             onClick={() => setMessage(null)}
             aria-label="Tutup notifikasi"
-            className="shrink-0 rounded text-slate-400 transition-colors hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+            className="shrink-0 rounded text-slate-400 transition-colors hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600"
           >
             <X className="h-4 w-4" />
           </button>

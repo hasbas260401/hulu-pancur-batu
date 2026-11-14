@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { Suspense } from 'react'
@@ -6,28 +6,37 @@ import fs from 'fs/promises'
 import path from 'path'
 import PizZip from 'pizzip'
 import Docxtemplater from 'docxtemplater'
-import { auth } from '@/auth'
+import { getScope } from '@/lib/warga-scope'
 import FormBuatSuratClient from './FormBuatSuratClient'
 
-const prisma = new PrismaClient()
+type PengajuanPrefill = {
+  id: string
+  wargaId: string
+  nama: string
+  nik: string
+  dusunNama: string | null
+  keperluan: string
+  templateId: string | null
+  nomorSurat: string | null
+  status: string
+}
 
 async function cariWargaAction(keyword: string) {
   'use server'
-  if (!keyword || keyword.trim().length < 2) return []
+  // Hanya ADMIN, atau KADUS yang punya izin menu surat. Dicek ke database,
+  // sehingga pemanggil anonim tidak bisa menelusuri data warga lewat action ini.
+  const scope = await getScope('surat', 'pembuatan surat')
+  if (!scope.ok) throw new Error(scope.message)
 
-  const session = await auth()
-  const user = session?.user as any
-  const isKadus = user?.role === 'KADUS'
-  const userDusunId = user?.dusunId
-
-  const dusunFilter = isKadus && userDusunId ? { dusunId: userDusunId } : {}
+  const kataKunci = String(keyword ?? '').trim()
+  if (kataKunci.length < 2) return []
 
   const hasil = await prisma.warga.findMany({
     where: {
-      ...dusunFilter,
+      ...scope.dusunFilter,
       OR: [
-        { nama: { contains: keyword, mode: 'insensitive' } },
-        { nik: { contains: keyword, mode: 'insensitive' } },
+        { nama: { contains: kataKunci, mode: 'insensitive' } },
+        { nik: { contains: kataKunci, mode: 'insensitive' } },
       ],
     },
     take: 10,
@@ -45,23 +54,90 @@ async function cariWargaAction(keyword: string) {
 async function generateSuratAction(formData: FormData) {
   'use server'
 
-  const wargaId = formData.get('wargaId') as string
-  const templateId = formData.get('templateId') as string
-  const keperluan = formData.get('keperluan') as string
-  const rawNomorSurat = formData.get('nomorSurat') as string
+  // Wajib login dan berwenang membuat surat (ADMIN, atau KADUS berizin 'surat').
+  const scope = await getScope('surat', 'pembuatan surat')
+  if (!scope.ok) throw new Error(scope.message)
 
-  const nomorSurat = rawNomorSurat && rawNomorSurat.trim() !== '' ? rawNomorSurat.trim() : null
+  const wargaIdInput = String(formData.get('wargaId') ?? '').trim()
+  const pengajuanId = String(formData.get('pengajuanId') ?? '').trim()
+  const templateId = String(formData.get('templateId') ?? '').trim()
+  const keperluanInput = String(formData.get('keperluan') ?? '').trim().slice(0, 500)
+  const rawNomorSurat = String(formData.get('nomorSurat') ?? '').trim()
+
+  // Saat admin memproses permohonan warga, data warga & keperluan diambil dari
+  // pengajuan di database agar tidak bisa dimanipulasi lewat form.
+  let pengajuan: {
+    id: string
+    wargaId: string
+    dusunId: number
+    status: string
+    keperluan: string
+    nomorSurat: string | null
+  } | null = null
+
+  if (pengajuanId) {
+    pengajuan = await prisma.pengajuanSurat.findUnique({
+      where: { id: pengajuanId },
+      select: {
+        id: true,
+        wargaId: true,
+        dusunId: true,
+        status: true,
+        keperluan: true,
+        nomorSurat: true,
+      },
+    })
+    if (!pengajuan) {
+      throw new Error('Pengajuan surat tidak ditemukan!')
+    }
+    if (pengajuan.status === 'SELESAI') {
+      throw new Error('Pengajuan ini sudah selesai dan tidak dapat diproses ulang.')
+    }
+    if (pengajuan.status === 'DITOLAK') {
+      throw new Error('Pengajuan yang ditolak harus dibuka kembali sebelum dibuatkan surat.')
+    }
+    if (scope.role === 'KADUS' && pengajuan.dusunId !== scope.dusunFilter.dusunId) {
+      throw new Error('Akses ditolak! Anda hanya dapat memproses permohonan di dusun penugasan Anda.')
+    }
+  }
+
+  const wargaId = pengajuan?.wargaId ?? wargaIdInput
+  const keperluan = keperluanInput || pengajuan?.keperluan || ''
+  const nomorSurat =
+    rawNomorSurat !== ''
+      ? rawNomorSurat.slice(0, 100)
+      : pengajuan?.nomorSurat ?? null
 
   if (!wargaId || !templateId) {
     throw new Error('Warga dan Template Surat wajib dipilih!')
   }
 
-  const session = await auth()
-  const user = session?.user as any
-  if (user?.role === 'KADUS' && user?.dusunId) {
-    const targetWarga = await prisma.warga.findUnique({ where: { id: wargaId }, select: { dusunId: true } })
-    if (!targetWarga || targetWarga.dusunId !== user.dusunId) {
-      throw new Error('Akses ditolak! Anda hanya dapat membuat surat untuk warga di dusun penugasan Anda.')
+  // Cek kepemilikan dusun SEBELUM membuat berkas apa pun.
+  const targetWarga = await prisma.warga.findUnique({
+    where: { id: wargaId },
+    select: { dusunId: true },
+  })
+  if (!targetWarga) {
+    throw new Error('Data warga tidak ditemukan!')
+  }
+  if (scope.role === 'KADUS' && targetWarga.dusunId !== scope.dusunFilter.dusunId) {
+    throw new Error('Akses ditolak! Anda hanya dapat membuat surat untuk warga di dusun penugasan Anda.')
+  }
+
+  // Cegah nomor surat bentrok SEBELUM dokumen dibuat, agar tidak ada berkas
+  // yatim saat proses penyimpanan gagal.
+  if (nomorSurat) {
+    const bentrok = await prisma.pengajuanSurat.findFirst({
+      where: {
+        nomorSurat,
+        ...(pengajuan ? { NOT: { id: pengajuan.id } } : {}),
+      },
+      select: { id: true },
+    })
+    if (bentrok) {
+      throw new Error(
+        `Nomor Surat "${nomorSurat}" sudah pernah digunakan! Silakan gunakan nomor surat lain.`
+      )
     }
   }
 
@@ -78,7 +154,12 @@ async function generateSuratAction(formData: FormData) {
     throw new Error('Data Warga atau Template tidak ditemukan!')
   }
 
-  const templatePath = path.join(process.cwd(), 'public', template.filePath)
+  const publicDir = path.join(process.cwd(), 'public')
+  const templatePath = path.join(publicDir, template.filePath)
+  const relativeTemplate = path.relative(publicDir, templatePath)
+  if (!relativeTemplate || relativeTemplate.startsWith('..') || path.isAbsolute(relativeTemplate)) {
+    throw new Error('Lokasi file template tidak valid.')
+  }
   const content = await fs.readFile(templatePath)
 
   const zip = new PizZip(content)
@@ -166,18 +247,45 @@ async function generateSuratAction(formData: FormData) {
   await fs.writeFile(outputFullPath, buf)
 
   try {
-    await prisma.pengajuanSurat.create({
-      data: {
-        wargaId: warga.id,
-        templateId: template.id,
-        dusunId: warga.dusunId,
-        keperluan: keperluan || 'Pembuatan Surat Keterangan',
-        nomorSurat: nomorSurat,
-        filePath: outputRelativePath,
-        status: 'SELESAI',
-      },
-    })
+    if (pengajuan) {
+      // Perbarui baris pengajuan yang sama agar riwayat warga dan arsip admin
+      // tetap sinkron (tidak membuat duplikat). Status naik ke Proses dan
+      // menunggu admin menandai Selesai.
+      await prisma.pengajuanSurat.update({
+        where: { id: pengajuan.id },
+        data: {
+          templateId: template.id,
+          keperluan: keperluan || 'Pembuatan Surat Keterangan',
+          nomorSurat,
+          filePath: outputRelativePath,
+          status: 'DIVERIFIKASI',
+          catatan: null,
+          diprosesOlehId: scope.userId,
+          diprosesAt: new Date(),
+        },
+      })
+    } else {
+      await prisma.pengajuanSurat.create({
+        data: {
+          wargaId: warga.id,
+          templateId: template.id,
+          dusunId: warga.dusunId,
+          keperluan: keperluan || 'Pembuatan Surat Keterangan',
+          nomorSurat: nomorSurat,
+          filePath: outputRelativePath,
+          status: 'SELESAI',
+          diprosesOlehId: scope.userId,
+          diprosesAt: new Date(),
+        },
+      })
+    }
   } catch (error: any) {
+    // Jangan tinggalkan berkas dokumen tanpa baris database.
+    try {
+      await fs.unlink(outputFullPath)
+    } catch {
+      // Berkas mungkin belum sempat dibuat.
+    }
     if (error.code === 'P2002') {
       throw new Error(`Nomor Surat "${nomorSurat}" sudah pernah digunakan! Silakan gunakan nomor surat lain.`)
     }
@@ -189,28 +297,84 @@ async function generateSuratAction(formData: FormData) {
   redirect('/dashboard/surat/riwayat')
 }
 
-export default function BuatSuratPage() {
+export default function BuatSuratPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ pengajuanId?: string }>
+}) {
   return (
     <Suspense 
       fallback={
         <div className="flex items-center justify-center min-h-[50vh] w-full">
           <div className="flex items-center gap-3 bg-slate-900 text-white px-5 py-3 rounded-xl text-xs font-bold shadow-lg">
-            <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+            <div className="w-4 h-4 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin"></div>
             <span>Memuat data...</span>
           </div>
         </div>
       }
     >
-      <FormContent />
+      <FormContent searchParams={searchParams} />
     </Suspense>
   )
 }
 
-async function FormContent() {
-  const session = await auth()
-  const user = session?.user as any
+async function FormContent({
+  searchParams,
+}: {
+  searchParams: Promise<{ pengajuanId?: string }>
+}) {
+  const scope = await getScope('surat', 'pembuatan surat')
+  if (!scope.ok) {
+    redirect(scope.status === 401 ? '/login' : '/dashboard')
+  }
 
-  const isKadus = user?.role === 'KADUS'
+  const isKadus = scope.role === 'KADUS'
+  const resolvedParams = await searchParams
+  const pengajuanId = String(resolvedParams.pengajuanId ?? '').trim()
+
+  let pengajuan: PengajuanPrefill | null = null
+
+  if (pengajuanId) {
+    const ditemukan = await prisma.pengajuanSurat.findUnique({
+      where: { id: pengajuanId },
+      select: {
+        id: true,
+        wargaId: true,
+        dusunId: true,
+        status: true,
+        keperluan: true,
+        templateId: true,
+        nomorSurat: true,
+        warga: {
+          select: {
+            nama: true,
+            nik: true,
+            dusun: { select: { nama: true } },
+          },
+        },
+      },
+    })
+
+    if (!ditemukan) redirect('/dashboard/surat/riwayat')
+    if (isKadus && ditemukan.dusunId !== scope.dusunFilter.dusunId) {
+      redirect('/dashboard/surat/riwayat')
+    }
+    if (ditemukan.status === 'SELESAI' || ditemukan.status === 'DITOLAK') {
+      redirect('/dashboard/surat/riwayat')
+    }
+
+    pengajuan = {
+      id: ditemukan.id,
+      wargaId: ditemukan.wargaId,
+      nama: ditemukan.warga.nama,
+      nik: ditemukan.warga.nik,
+      dusunNama: ditemukan.warga.dusun?.nama ?? null,
+      keperluan: ditemukan.keperluan,
+      templateId: ditemukan.templateId,
+      nomorSurat: ditemukan.nomorSurat,
+      status: ditemukan.status,
+    }
+  }
 
   const daftarTemplate = await prisma.templateSurat.findMany({
     where: { aktif: true },
@@ -218,7 +382,10 @@ async function FormContent() {
   })
 
   const riwayatSurat = await prisma.pengajuanSurat.findMany({
-    where: { nomorSurat: { not: null } },
+    where: {
+      nomorSurat: { not: null },
+      ...(pengajuan ? { NOT: { id: pengajuan.id } } : {}),
+    },
     orderBy: { createdAt: 'desc' },
     select: { nomorSurat: true },
   })
@@ -257,21 +424,26 @@ async function FormContent() {
     <div className="max-w-4xl mx-auto space-y-6 pb-12">
       <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-800 tracking-tight">Buat / Generate Surat Warga</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-800">
+            {pengajuan ? 'Proses & Buat Surat Warga' : 'Buat / Generate Surat Warga'}
+          </h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-            {isKadus
-              ? `Pilih warga khusus wilayah penugasan ${user?.dusunNama || 'Dusun Anda'} untuk mencetak dokumen.`
-              : 'Pilih warga dan jenis surat untuk mencetak dokumen Word secara otomatis.'}
+            {pengajuan
+              ? `Lengkapi nomor surat resmi untuk permohonan ${pengajuan.nama}, lalu generate dokumen.`
+              : isKadus
+                ? `Pilih warga khusus wilayah penugasan ${scope.dusunNama || 'Dusun Anda'} untuk mencetak dokumen.`
+                : 'Pilih warga dan jenis surat untuk mencetak dokumen Word secara otomatis.'}
           </p>
         </div>
       </div>
 
       <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-xs">
         <FormBuatSuratClient
-          key={suggestedNomorSurat}
+          key={pengajuan?.id ?? suggestedNomorSurat}
           daftarTemplate={daftarTemplate}
           existingNomorSurat={existingNomorSurat}
           suggestedNomorSurat={suggestedNomorSurat}
+          pengajuan={pengajuan}
           cariWargaAction={cariWargaAction}
           generateAction={generateSuratAction}
         />

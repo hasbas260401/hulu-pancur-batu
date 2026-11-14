@@ -1,8 +1,6 @@
 import { Suspense } from 'react'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import ProgramBantuanClient from './ProgramBantuanClient'
-
-const prisma = new PrismaClient()
 
 export const metadata = {
   title: 'Program Bantuan Sosial | Desa Hulu Pancur Batu',

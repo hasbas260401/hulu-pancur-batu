@@ -1,15 +1,12 @@
 'use server'
 
-import { PrismaClient, Prisma, type Role } from '@prisma/client'
+import { Prisma, type Role } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
 import { requireAdmin } from '@/lib/require-admin'
-
-const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient }
-const prisma = globalForPrisma.prisma ?? new PrismaClient()
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
 
 const ROLES = ['WARGA', 'KADUS', 'ADMIN']
 const STATUSES = ['ACTIVE', 'PENDING', 'REJECTED', 'SUSPENDED']

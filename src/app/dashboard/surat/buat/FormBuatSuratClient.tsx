@@ -28,33 +28,62 @@ interface TemplateItem {
   nama: string
 }
 
+interface PengajuanPrefill {
+  id: string
+  wargaId: string
+  nama: string
+  nik: string
+  dusunNama: string | null
+  keperluan: string
+  templateId: string | null
+  nomorSurat: string | null
+  status: string
+}
+
 export default function FormBuatSuratClient({
   daftarTemplate,
   existingNomorSurat,
   suggestedNomorSurat,
+  pengajuan,
   cariWargaAction,
   generateAction,
 }: {
   daftarTemplate: TemplateItem[]
   existingNomorSurat: string[]
   suggestedNomorSurat: string
+  pengajuan: PengajuanPrefill | null
   cariWargaAction: (keyword: string) => Promise<WargaItem[]>
   generateAction: (formData: FormData) => Promise<void>
 }) {
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<WargaItem[]>([])
   const [isLoadingSearch, setIsLoadingSearch] = useState(false)
-  const [selectedWarga, setSelectedWarga] = useState<WargaItem | null>(null)
+  const [selectedWarga, setSelectedWarga] = useState<WargaItem | null>(
+    pengajuan
+      ? {
+          id: pengajuan.wargaId,
+          nik: pengajuan.nik,
+          nama: pengajuan.nama,
+          dusun: pengajuan.dusunNama ? { nama: pengajuan.dusunNama } : null,
+        }
+      : null
+  )
   const [isOpen, setIsOpen] = useState(false)
-  const [nomorSurat, setNomorSurat] = useState(suggestedNomorSurat)
+  const [nomorSurat, setNomorSurat] = useState(pengajuan?.nomorSurat || suggestedNomorSurat)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const formRef = useRef<HTMLFormElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
-  // Sinkronisasi nomor surat otomatis dari server
+  // Permohonan warga: data warga dikunci agar tidak tertukar saat memproses.
+  const isProcessingPengajuan = Boolean(pengajuan)
+
+  // Sinkronisasi nomor surat otomatis dari server (kecuali sudah ada nomor
+  // dari permohonan yang sedang diproses).
   useEffect(() => {
-    setNomorSurat(suggestedNomorSurat)
-  }, [suggestedNomorSurat])
+    if (!pengajuan?.nomorSurat) {
+      setNomorSurat(suggestedNomorSurat)
+    }
+  }, [suggestedNomorSurat, pengajuan?.nomorSurat])
 
   useEffect(() => {
     const timer = setTimeout(async () => {
@@ -116,7 +145,7 @@ export default function FormBuatSuratClient({
       {/* Loading Overlay Full Form dengan Indikator Proses Melingkar */}
       {isSubmitting && (
         <div className="absolute inset-0 bg-white/95 backdrop-blur-xs flex flex-col items-center justify-center z-50 rounded-2xl transition-all gap-4 shadow-md">
-          <div className="w-14 h-14 rounded-full bg-blue-50 border-4 border-blue-600 border-t-transparent animate-spin flex items-center justify-center shadow-lg"></div>
+          <div className="w-14 h-14 rounded-full bg-emerald-50 border-4 border-emerald-600 border-t-transparent animate-spin flex items-center justify-center shadow-lg"></div>
           <div className="text-sm font-bold text-slate-800 tracking-wide animate-pulse">
             Sedang Memproses & Menggenerate Dokumen Surat...
           </div>
@@ -124,17 +153,33 @@ export default function FormBuatSuratClient({
         </div>
       )}
 
+      {/* Info mode proses permohonan warga */}
+      {pengajuan && (
+        <div className="rounded-xl border border-sky-200 bg-sky-50 p-4 text-sky-900">
+          <p className="text-xs font-bold uppercase tracking-wide">Memproses permohonan surat warga</p>
+          <p className="mt-1 text-[11px] leading-relaxed text-sky-800">
+            Data warga dan keperluan sudah terisi otomatis dari pengajuan. Cukup pilih jenis surat,
+            isi nomor surat resmi, lalu generate dokumen. Status pengajuan akan berubah menjadi{' '}
+            <span className="font-bold">Proses</span> dan dapat ditandai{' '}
+            <span className="font-bold">Selesai</span> setelah dokumen dibuat.
+          </p>
+        </div>
+      )}
+
+      {pengajuan && <input type="hidden" name="pengajuanId" value={pengajuan.id} />}
+
       {/* 1. Pilih Template Surat */}
       <div className="space-y-1.5">
         <label className="font-bold text-slate-700 uppercase tracking-wide flex items-center gap-1.5">
-          <FileText className="w-4 h-4 text-blue-600" />
+          <FileText className="w-4 h-4 text-emerald-600" />
           <span>1. Pilih Jenis Surat / Template *</span>
         </label>
         <select
           name="templateId"
           required
+          defaultValue={pengajuan?.templateId ?? ''}
           disabled={isSubmitting}
-          className="w-full px-4 py-3 border border-slate-200 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none bg-slate-50 font-medium text-slate-800 disabled:opacity-50 cursor-pointer transition"
+          className="w-full px-4 py-3 border border-slate-200 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 focus:bg-white outline-none bg-slate-50 font-medium text-slate-800 disabled:opacity-50 cursor-pointer transition"
         >
           <option value="">-- Pilih Template Surat --</option>
           {daftarTemplate.map((t) => (
@@ -148,87 +193,107 @@ export default function FormBuatSuratClient({
       {/* 2. Pilih Data Warga */}
       <div className="space-y-1.5 relative" ref={dropdownRef}>
         <label className="font-bold text-slate-700 uppercase tracking-wide flex items-center gap-1.5">
-          <User className="w-4 h-4 text-blue-600" />
+          <User className="w-4 h-4 text-emerald-600" />
           <span>2. Pilih Data Warga *</span>
         </label>
         
         <input type="hidden" name="wargaId" value={selectedWarga ? selectedWarga.id : ''} required />
 
-        <div
-          onClick={() => !isSubmitting && setIsOpen(true)}
-          className="w-full px-4 py-3 border border-slate-200 rounded-xl text-xs sm:text-sm bg-slate-50 flex items-center justify-between cursor-pointer focus-within:ring-2 focus-within:ring-blue-500 focus-within:bg-white transition"
-        >
-          <div className="flex items-center gap-2.5 w-full">
-            <Search className="w-4 h-4 text-slate-400 shrink-0" />
-            <input
-              type="text"
-              placeholder="Ketik minimal 2 huruf Nama atau NIK Warga..."
-              disabled={isSubmitting}
-              value={isOpen ? searchQuery : (selectedWarga ? `${selectedWarga.nik} — ${selectedWarga.nama} (${selectedWarga.dusun?.nama || 'Dusun -'})` : '')}
-              onChange={(e) => {
-                setSearchQuery(e.target.value)
-                setIsOpen(true)
-                if (selectedWarga) setSelectedWarga(null)
-              }}
-              onFocus={() => setIsOpen(true)}
-              className="w-full outline-none bg-transparent cursor-pointer disabled:opacity-50 font-medium text-slate-800"
-            />
-          </div>
-          {isLoadingSearch && <Loader2 className="w-4 h-4 text-blue-500 animate-spin shrink-0 ml-2" />}
-          {selectedWarga && !isSubmitting && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation()
-                setSelectedWarga(null)
-                setSearchQuery('')
-                setSearchResults([])
-              }}
-              className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg bg-slate-200/60 cursor-pointer ml-2 transition"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          )}
-        </div>
-
-        {isOpen && !isSubmitting && (
-          <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl max-h-60 overflow-y-auto">
-            {searchQuery.trim().length < 2 ? (
-              <div className="p-4 text-xs text-slate-400 text-center font-medium">Ketik minimal 2 karakter untuk mencari warga...</div>
-            ) : searchResults.length === 0 ? (
-              <div className="p-4 text-xs text-slate-400 text-center font-medium">
-                {isLoadingSearch ? 'Mencari data...' : 'Warga tidak ditemukan'}
+        {pengajuan ? (
+          <div className="w-full px-4 py-3 border border-emerald-200 bg-emerald-50/60 rounded-xl text-xs sm:text-sm flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <User className="w-4 h-4 text-emerald-600 shrink-0" />
+              <div className="min-w-0">
+                <p className="font-bold text-slate-800 truncate">{pengajuan.nama}</p>
+                <p className="text-[11px] text-slate-500 font-mono truncate">
+                  NIK: {pengajuan.nik}
+                  {pengajuan.dusunNama ? ` • ${pengajuan.dusunNama}` : ''}
+                </p>
               </div>
-            ) : (
-              searchResults.map((w) => (
-                <div
-                  key={w.id}
-                  onClick={() => {
-                    setSelectedWarga(w)
-                    setSearchQuery('')
-                    setIsOpen(false)
-                  }}
-                  className="px-4 py-3 text-xs hover:bg-blue-50 cursor-pointer border-b border-slate-100 last:border-0 flex items-center justify-between transition"
-                >
-                  <div>
-                    <span className="font-bold text-slate-800 text-sm">{w.nama}</span>
-                    <span className="text-slate-500 ml-2 font-mono">NIK: {w.nik}</span>
-                  </div>
-                  <span className="text-slate-600 font-semibold text-[11px] bg-slate-100 px-2.5 py-1 rounded-md">
-                    {w.dusun?.nama || 'Dusun -'}
-                  </span>
-                </div>
-              ))
-            )}
+            </div>
+            <span className="shrink-0 rounded-lg bg-emerald-100 px-2.5 py-1 text-[10px] font-bold text-emerald-700">
+              Dari Pengajuan
+            </span>
           </div>
+        ) : (
+          <>
+            <div
+              onClick={() => !isSubmitting && setIsOpen(true)}
+              className="w-full px-4 py-3 border border-slate-200 rounded-xl text-xs sm:text-sm bg-slate-50 flex items-center justify-between cursor-pointer focus-within:ring-2 focus-within:ring-emerald-500 focus-within:bg-white transition"
+            >
+              <div className="flex items-center gap-2.5 w-full">
+                <Search className="w-4 h-4 text-slate-400 shrink-0" />
+                <input
+                  type="text"
+                  placeholder="Ketik minimal 2 huruf Nama atau NIK Warga..."
+                  disabled={isSubmitting}
+                  value={isOpen ? searchQuery : (selectedWarga ? `${selectedWarga.nik} — ${selectedWarga.nama} (${selectedWarga.dusun?.nama || 'Dusun -'})` : '')}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value)
+                    setIsOpen(true)
+                    if (selectedWarga) setSelectedWarga(null)
+                  }}
+                  onFocus={() => setIsOpen(true)}
+                  className="w-full outline-none bg-transparent cursor-pointer disabled:opacity-50 font-medium text-slate-800"
+                />
+              </div>
+              {isLoadingSearch && <Loader2 className="w-4 h-4 text-emerald-500 animate-spin shrink-0 ml-2" />}
+              {selectedWarga && !isSubmitting && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setSelectedWarga(null)
+                    setSearchQuery('')
+                    setSearchResults([])
+                  }}
+                  className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg bg-slate-200/60 cursor-pointer ml-2 transition"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {isOpen && !isSubmitting && (
+              <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl max-h-60 overflow-y-auto">
+                {searchQuery.trim().length < 2 ? (
+                  <div className="p-4 text-xs text-slate-400 text-center font-medium">Ketik minimal 2 karakter untuk mencari warga...</div>
+                ) : searchResults.length === 0 ? (
+                  <div className="p-4 text-xs text-slate-400 text-center font-medium">
+                    {isLoadingSearch ? 'Mencari data...' : 'Warga tidak ditemukan'}
+                  </div>
+                ) : (
+                  searchResults.map((w) => (
+                    <div
+                      key={w.id}
+                      onClick={() => {
+                        setSelectedWarga(w)
+                        setSearchQuery('')
+                        setIsOpen(false)
+                      }}
+                      className="px-4 py-3 text-xs hover:bg-emerald-50 cursor-pointer border-b border-slate-100 last:border-0 flex items-center justify-between transition"
+                    >
+                      <div>
+                        <span className="font-bold text-slate-800 text-sm">{w.nama}</span>
+                        <span className="text-slate-500 ml-2 font-mono">NIK: {w.nik}</span>
+                      </div>
+                      <span className="text-slate-600 font-semibold text-[11px] bg-slate-100 px-2.5 py-1 rounded-md">
+                        {w.dusun?.nama || 'Dusun -'}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </>
         )}
       </div>
 
       {/* 3. Nomor Surat */}
       <div className="space-y-1.5">
         <label className="font-bold text-slate-700 uppercase tracking-wide flex items-center gap-1.5">
-          <Hash className="w-4 h-4 text-blue-600" />
-          <span>3. Nomor Surat (Opsional)</span>
+          <Hash className="w-4 h-4 text-emerald-600" />
+          <span>3. Nomor Surat Resmi (Opsional)</span>
         </label>
         <div className="relative">
           <input
@@ -243,7 +308,7 @@ export default function FormBuatSuratClient({
                 ? 'border-rose-500 focus:ring-rose-500 bg-rose-50/30'
                 : nomorSurat.trim() !== ''
                 ? 'border-emerald-500 focus:ring-emerald-500 bg-emerald-50/10'
-                : 'border-slate-200 focus:ring-blue-500'
+                : 'border-slate-200 focus:ring-emerald-500'
             }`}
           />
 
@@ -276,15 +341,16 @@ export default function FormBuatSuratClient({
       {/* 4. Keperluan */}
       <div className="space-y-1.5">
         <label className="font-bold text-slate-700 uppercase tracking-wide flex items-center gap-1.5">
-          <MessageSquareText className="w-4 h-4 text-blue-600" />
+          <MessageSquareText className="w-4 h-4 text-emerald-600" />
           <span>4. Keperluan / Keterangan Tambahan</span>
         </label>
         <textarea
           name="keperluan"
           rows={3}
+          defaultValue={pengajuan?.keperluan ?? ''}
           disabled={isSubmitting}
           placeholder="Contoh: Persyaratan Mengurus Kartu Indonesia Sehat (KIS)"
-          className="w-full px-4 py-3 border border-slate-200 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none bg-slate-50 font-medium text-slate-800 disabled:opacity-50 transition resize-none"
+          className="w-full px-4 py-3 border border-slate-200 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 focus:bg-white outline-none bg-slate-50 font-medium text-slate-800 disabled:opacity-50 transition resize-none"
         />
       </div>
 
@@ -292,7 +358,7 @@ export default function FormBuatSuratClient({
         <button
           type="submit"
           disabled={isNomorSuratExists || isSubmitting}
-          className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow-xs transition cursor-pointer flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow-xs transition cursor-pointer flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isSubmitting ? (
             <>
@@ -302,7 +368,7 @@ export default function FormBuatSuratClient({
           ) : (
             <>
               <Zap className="w-4 h-4" />
-              <span>Generate Dokumen Surat</span>
+              <span>{isProcessingPengajuan ? 'Generate & Proses Surat' : 'Generate Dokumen Surat'}</span>
             </>
           )}
         </button>

@@ -4,19 +4,35 @@ import { useState, useEffect, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAlert } from '@/components/ui/alert'
-import { 
-  Download, 
-  Trash2, 
-  Plus, 
-  Search, 
-  ChevronDown, 
-  FileText, 
-  FileSpreadsheet, 
+import {
+  Download,
+  Trash2,
+  Plus,
+  Search,
+  ChevronDown,
+  FileText,
+  FileSpreadsheet,
   Loader2,
   ChevronLeft,
   ChevronRight,
-  History
+  History,
+  XCircle,
+  CheckCircle2,
+  Inbox,
+  FilePenLine,
+  MessageSquareText,
 } from 'lucide-react'
+import { StatusSuratBadge } from '@/components/ui/status-surat'
+
+type StatusTab = 'SEMUA' | 'DIAJUKAN' | 'DIVERIFIKASI' | 'SELESAI' | 'DITOLAK'
+
+const STATUS_TABS: { id: StatusTab; label: string }[] = [
+  { id: 'SEMUA', label: 'Semua' },
+  { id: 'DIAJUKAN', label: 'Pending' },
+  { id: 'DIVERIFIKASI', label: 'Proses' },
+  { id: 'SELESAI', label: 'Selesai' },
+  { id: 'DITOLAK', label: 'Ditolak' },
+]
 
 export default function RiwayatSuratClient({
   initialRiwayat,
@@ -24,6 +40,9 @@ export default function RiwayatSuratClient({
   isKadus,
   dusunNama,
   clearAction,
+  statusAction,
+  currentStatus,
+  statusCounts,
   currentPage,
   totalPages,
   totalFilteredRiwayat,
@@ -33,6 +52,9 @@ export default function RiwayatSuratClient({
   isKadus: boolean
   dusunNama?: string
   clearAction: () => Promise<void>
+  statusAction: (formData: FormData) => Promise<{ success: boolean; message: string }>
+  currentStatus: string
+  statusCounts: Record<StatusTab, number>
   currentPage: number
   totalPages: number
   totalFilteredRiwayat: number
@@ -41,11 +63,20 @@ export default function RiwayatSuratClient({
   const searchParams = useSearchParams()
   const alert = useAlert()
   const [isPending, startTransition] = useTransition()
+  const [isStatusPending, startStatusTransition] = useTransition()
 
   const [filterType, setFilterType] = useState(searchParams.get('filter') || 'all')
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '')
   const [dateQuery, setDateQuery] = useState(searchParams.get('date') || '')
   const [isDeleting, setIsDeleting] = useState(false)
+  const [statusBusyId, setStatusBusyId] = useState<string | null>(null)
+  const [statusTarget, setStatusTarget] = useState<{
+    id: string
+    nama: string
+    status: 'SELESAI' | 'DITOLAK'
+  } | null>(null)
+  const [catatanInput, setCatatanInput] = useState('')
+  const [nomorInput, setNomorInput] = useState('')
 
   // AJAX Real-time Search dengan Debounce
   useEffect(() => {
@@ -53,6 +84,7 @@ export default function RiwayatSuratClient({
       const currentQ = searchParams.get('q') || ''
       const currentFilter = searchParams.get('filter') || 'all'
       const currentDate = searchParams.get('date') || ''
+      const currentStatusParam = searchParams.get('status') || 'SEMUA'
 
       if (searchQuery !== currentQ || filterType !== currentFilter || dateQuery !== currentDate) {
         const params = new URLSearchParams()
@@ -62,6 +94,7 @@ export default function RiwayatSuratClient({
         } else {
           if (searchQuery) params.set('q', searchQuery)
         }
+        if (currentStatusParam !== 'SEMUA') params.set('status', currentStatusParam)
         params.set('page', '1')
 
         startTransition(() => {
@@ -79,6 +112,52 @@ export default function RiwayatSuratClient({
     setDateQuery('')
     startTransition(() => {
       router.push('/dashboard/surat/riwayat', { scroll: false })
+    })
+  }
+
+  const handleStatusTab = (status: StatusTab) => {
+    const params = new URLSearchParams(searchParams.toString())
+    if (status === 'SEMUA') {
+      params.delete('status')
+    } else {
+      params.set('status', status)
+    }
+    params.set('page', '1')
+    startTransition(() => {
+      router.push(`/dashboard/surat/riwayat?${params.toString()}`, { scroll: false })
+    })
+  }
+
+  const bukaModalStatus = (item: any, status: 'SELESAI' | 'DITOLAK') => {
+    setStatusTarget({ id: item.id, nama: item.warga?.nama || 'warga', status })
+    setCatatanInput(status === 'SELESAI' ? item.catatan || '' : '')
+    setNomorInput(item.nomorSurat || '')
+  }
+
+  const tutupModalStatus = () => {
+    setStatusTarget(null)
+    setCatatanInput('')
+    setNomorInput('')
+  }
+
+  const ubahStatus = (id: string, status: string, catatan?: string, nomorSurat?: string) => {
+    const formData = new FormData()
+    formData.set('id', id)
+    formData.set('status', status)
+    if (catatan) formData.set('catatan', catatan)
+    if (nomorSurat !== undefined) formData.set('nomorSurat', nomorSurat)
+
+    setStatusBusyId(id)
+    startStatusTransition(async () => {
+      const result = await statusAction(formData)
+      setStatusBusyId(null)
+      if (result.success) {
+        tutupModalStatus()
+        await alert.success('Status Diperbarui', result.message)
+        router.refresh()
+      } else {
+        await alert.error('Gagal Mengubah Status', result.message)
+      }
     })
   }
 
@@ -146,15 +225,17 @@ export default function RiwayatSuratClient({
       {/* Header Halaman dengan Tata Letak Profesional & Seimbang */}
       <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div className="flex items-start gap-3.5">
-          <div className="w-12 h-12 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0 text-blue-600 shadow-2xs">
+          <div className="w-12 h-12 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center shrink-0 text-emerald-600 shadow-2xs">
             <History className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-xl sm:text-2xl font-extrabold text-slate-800 tracking-tight">Riwayat Cetak Surat</h1>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-800">
+              Surat Masuk &amp; Riwayat Surat
+            </h1>
             <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
               {isKadus
-                ? `Daftar seluruh riwayat surat warga khusus wilayah ${dusunNama || 'Dusun Anda'}.`
-                : 'Daftar seluruh surat yang pernah di-generate oleh sistem secara otomatis.'}
+                ? `Permohonan surat warga khusus wilayah ${dusunNama || 'Dusun Anda'} beserta status pemrosesannya.`
+                : 'Permohonan surat dari warga beserta status pemrosesan dan arsip surat yang telah dibuat.'}
             </p>
           </div>
         </div>
@@ -189,12 +270,60 @@ export default function RiwayatSuratClient({
 
           <Link
             href="/dashboard/surat/buat"
-            className="h-10 px-4 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-xs transition inline-flex items-center justify-center gap-2"
+            className="h-10 px-4 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition inline-flex items-center justify-center gap-2"
           >
             <Plus className="w-4 h-4 shrink-0" /> 
             <span>Buat Surat Baru</span>
           </Link>
         </div>
+      </div>
+
+      {/* Notifikasi permohonan baru */}
+      {statusCounts.DIAJUKAN > 0 && (
+        <div className="flex items-start gap-3 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-amber-900">
+          <Inbox className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+          <div className="text-xs leading-relaxed">
+            <p className="text-sm font-bold">
+              {statusCounts.DIAJUKAN} permohonan surat baru menunggu diproses
+            </p>
+            <p className="mt-0.5 text-amber-800">
+              Buka tab <span className="font-semibold">Pending</span> lalu tekan tombol{' '}
+              <span className="font-semibold">Proses &amp; Buat Surat</span> untuk melengkapi nomor
+              surat dan membuat dokumen.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => handleStatusTab('DIAJUKAN')}
+            className="ml-auto shrink-0 rounded-xl bg-amber-600 px-3 py-2 text-[11px] font-bold text-white transition hover:bg-amber-700"
+          >
+            Lihat Pending
+          </button>
+        </div>
+      )}
+
+      {/* Tab status */}
+      <div className="flex flex-wrap items-center gap-1.5 rounded-2xl border border-slate-200/80 bg-white p-3 shadow-xs">
+        {STATUS_TABS.map((tab) => {
+          const aktif = (currentStatus || 'SEMUA') === tab.id
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => handleStatusTab(tab.id)}
+              className={`rounded-xl px-3 py-2 text-[11px] font-bold transition ${
+                aktif
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              {tab.label}
+              <span className={`ml-1.5 ${aktif ? 'text-emerald-100' : 'text-slate-400'}`}>
+                ({statusCounts[tab.id] ?? 0})
+              </span>
+            </button>
+          )
+        })}
       </div>
 
       {/* Kartu Pencarian AJAX */}
@@ -208,7 +337,7 @@ export default function RiwayatSuratClient({
                 setSearchQuery('')
                 setDateQuery('')
               }}
-              className="w-full px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer transition"
+              className="w-full px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer transition"
             >
               <option value="all">Cari Semua (Nama/No)</option>
               <option value="nama">Berdasarkan Nama Warga</option>
@@ -223,7 +352,7 @@ export default function RiwayatSuratClient({
                 type="date"
                 value={dateQuery}
                 onChange={(e) => setDateQuery(e.target.value)}
-                className="w-full px-4 py-3 bg-slate-50 text-slate-800 border border-slate-200 rounded-xl text-xs font-medium outline-none focus:ring-2 focus:ring-blue-500 transition"
+                className="w-full px-4 py-3 bg-slate-50 text-slate-800 border border-slate-200 rounded-xl text-xs font-medium outline-none focus:ring-2 focus:ring-emerald-500 transition"
               />
             ) : (
               <div className="relative flex items-center w-full">
@@ -239,10 +368,10 @@ export default function RiwayatSuratClient({
                   }
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-10 py-3 bg-slate-50 text-slate-800 placeholder:text-slate-400 text-xs font-medium border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 transition"
+                  className="w-full pl-10 pr-10 py-3 bg-slate-50 text-slate-800 placeholder:text-slate-400 text-xs font-medium border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 transition"
                 />
                 {isPending && (
-                  <Loader2 className="absolute right-3.5 w-4 h-4 text-blue-500 animate-spin" />
+                  <Loader2 className="absolute right-3.5 w-4 h-4 text-emerald-500 animate-spin" />
                 )}
               </div>
             )}
@@ -263,7 +392,7 @@ export default function RiwayatSuratClient({
       {/* Tabel Data Riwayat */}
       <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs sm:text-sm text-slate-600">
+          <table className="w-full min-w-[1000px] text-left text-xs sm:text-sm text-slate-600">
             <thead className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold uppercase tracking-wider text-slate-500">
               <tr>
                 <th className="px-6 py-3.5">Tanggal</th>
@@ -271,13 +400,14 @@ export default function RiwayatSuratClient({
                 <th className="px-6 py-3.5">Warga</th>
                 <th className="px-6 py-3.5">Jenis Surat</th>
                 <th className="px-6 py-3.5">Keperluan</th>
+                <th className="px-6 py-3.5">Status</th>
                 <th className="px-6 py-3.5 text-center">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {initialRiwayat.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-slate-400 text-xs font-medium">
+                  <td colSpan={7} className="px-6 py-12 text-center text-slate-400 text-xs font-medium">
                     Tidak ada riwayat surat yang sesuai dengan kriteria pencarian.
                   </td>
                 </tr>
@@ -307,6 +437,83 @@ export default function RiwayatSuratClient({
                         {item.template?.nama || <span className="text-slate-400 italic">Template Dihapus</span>}
                       </td>
                       <td className="px-6 py-4 text-slate-600 text-xs max-w-xs truncate">{item.keperluan}</td>
+                      <td className="px-6 py-4">
+                        <StatusSuratBadge status={item.status} />
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          {item.status === 'DIAJUKAN' && (
+                            <>
+                              <Link
+                                href={`/dashboard/surat/buat?pengajuanId=${item.id}`}
+                                className="inline-flex items-center gap-1 rounded-lg bg-sky-600 px-2.5 py-1 text-[10px] font-bold text-white transition hover:bg-sky-700"
+                              >
+                                <FilePenLine className="h-3 w-3" />
+                                Proses &amp; Buat Surat
+                              </Link>
+                              <button
+                                type="button"
+                                onClick={() => bukaModalStatus(item, 'DITOLAK')}
+                                className="inline-flex items-center gap-1 rounded-lg bg-rose-50 px-2.5 py-1 text-[10px] font-bold text-rose-700 ring-1 ring-rose-200 transition hover:bg-rose-100"
+                              >
+                                <XCircle className="h-3 w-3" /> Tolak
+                              </button>
+                            </>
+                          )}
+                          {item.status === 'DIVERIFIKASI' && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => bukaModalStatus(item, 'SELESAI')}
+                                disabled={isStatusPending && statusBusyId === item.id}
+                                className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1 text-[10px] font-bold text-white transition hover:bg-emerald-700 disabled:opacity-50"
+                              >
+                                {isStatusPending && statusBusyId === item.id ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : (
+                                  <CheckCircle2 className="h-3 w-3" />
+                                )}
+                                Selesai
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => bukaModalStatus(item, 'DITOLAK')}
+                                className="inline-flex items-center gap-1 rounded-lg bg-rose-50 px-2.5 py-1 text-[10px] font-bold text-rose-700 ring-1 ring-rose-200 transition hover:bg-rose-100"
+                              >
+                                <XCircle className="h-3 w-3" /> Tolak
+                              </button>
+                              {!item.filePath && (
+                                <Link
+                                  href={`/dashboard/surat/buat?pengajuanId=${item.id}`}
+                                  className="inline-flex items-center gap-1 rounded-lg bg-sky-50 px-2.5 py-1 text-[10px] font-bold text-sky-700 ring-1 ring-sky-200 transition hover:bg-sky-100"
+                                >
+                                  <FilePenLine className="h-3 w-3" /> Buat Surat
+                                </Link>
+                              )}
+                            </>
+                          )}
+                          {item.status === 'DITOLAK' && (
+                            <button
+                              type="button"
+                              onClick={() => ubahStatus(item.id, 'DIAJUKAN')}
+                              disabled={isStatusPending && statusBusyId === item.id}
+                              className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-2.5 py-1 text-[10px] font-bold text-slate-700 transition hover:bg-slate-200 disabled:opacity-50"
+                            >
+                              Buka Kembali
+                            </button>
+                          )}
+                          {item.status === 'SELESAI' && (
+                            <span className="text-[10px] font-semibold text-slate-400">Final</span>
+                          )}
+                        </div>
+                        {item.catatan && (item.status === 'DITOLAK' || item.status === 'SELESAI') && (
+                          <p
+                            className={`mt-1 max-w-[190px] whitespace-pre-line text-[10px] leading-relaxed ${
+                              item.status === 'DITOLAK' ? 'text-rose-600' : 'text-slate-500'
+                            }`}
+                          >
+                            {item.catatan}
+                          </p>
+                        )}
+                      </td>
                       <td className="px-6 py-4 text-center whitespace-nowrap">
                         <details className="relative inline-block text-left group">
                           <summary className="cursor-pointer list-none px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition inline-flex items-center gap-1.5 shadow-2xs">
@@ -315,20 +522,28 @@ export default function RiwayatSuratClient({
                           </summary>
                           
                           <div className="absolute right-0 mt-2 w-44 bg-white border border-slate-200 rounded-xl shadow-xl z-50 p-1.5 space-y-1 text-left">
-                            <a
-                              href={item.filePath || '#'}
-                              download
-                              className="w-full px-3 py-2 text-xs font-semibold text-amber-700 hover:bg-amber-50 rounded-lg flex items-center gap-2 transition"
-                            >
-                              <FileSpreadsheet className="w-3.5 h-3.5 text-amber-600" /> Unduh Word (.docx)
-                            </a>
-                            <a
-                              href={pdfPath}
-                              download
-                              className="w-full px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-50 rounded-lg flex items-center gap-2 transition"
-                            >
-                              <FileText className="w-3.5 h-3.5 text-rose-600" /> Unduh PDF (.pdf)
-                            </a>
+                            {item.filePath ? (
+                              <>
+                                <a
+                                  href={item.filePath}
+                                  download
+                                  className="w-full px-3 py-2 text-xs font-semibold text-amber-700 hover:bg-amber-50 rounded-lg flex items-center gap-2 transition"
+                                >
+                                  <FileSpreadsheet className="w-3.5 h-3.5 text-amber-600" /> Unduh Word (.docx)
+                                </a>
+                                <a
+                                  href={pdfPath}
+                                  download
+                                  className="w-full px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-50 rounded-lg flex items-center gap-2 transition"
+                                >
+                                  <FileText className="w-3.5 h-3.5 text-rose-600" /> Unduh PDF (.pdf)
+                                </a>
+                              </>
+                            ) : (
+                              <span className="block px-3 py-2 text-[11px] font-medium text-slate-400">
+                                Dokumen belum dibuat
+                              </span>
+                            )}
                           </div>
                         </details>
                       </td>
@@ -378,6 +593,137 @@ export default function RiwayatSuratClient({
           </div>
         )}
       </div>
+
+      {/* Modal Selesai / Tolak dengan catatan & nomor surat */}
+      {statusTarget && (
+        <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md space-y-4 rounded-3xl border border-slate-800 bg-slate-900 p-6 shadow-2xl">
+            <div className="flex items-start gap-3">
+              <div
+                className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border ${
+                  statusTarget.status === 'SELESAI'
+                    ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-400'
+                    : 'border-rose-500/20 bg-rose-500/10 text-rose-500'
+                }`}
+              >
+                {statusTarget.status === 'SELESAI' ? (
+                  <CheckCircle2 className="h-5 w-5" />
+                ) : (
+                  <XCircle className="h-5 w-5" />
+                )}
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white">
+                  {statusTarget.status === 'SELESAI'
+                    ? 'Selesaikan Pengajuan Surat'
+                    : 'Tolak Pengajuan Surat'}
+                </h3>
+                <p className="mt-0.5 text-xs text-slate-400">
+                  Pengajuan dari{' '}
+                  <span className="font-semibold text-slate-200">{statusTarget.nama}</span>{' '}
+                  {statusTarget.status === 'SELESAI'
+                    ? 'akan ditandai Selesai. Catatan dan nomor surat akan terlihat oleh warga.'
+                    : 'akan ditandai Ditolak. Alasan akan terlihat oleh warga.'}
+                </p>
+              </div>
+            </div>
+
+            {statusTarget.status === 'SELESAI' && (
+              <div className="space-y-1.5">
+                <label htmlFor="nomorSuratSelesai" className="text-xs font-semibold text-slate-300">
+                  Nomor surat resmi <span className="text-slate-500">(opsional)</span>
+                </label>
+                <input
+                  id="nomorSuratSelesai"
+                  type="text"
+                  value={nomorInput}
+                  onChange={(e) => setNomorInput(e.target.value)}
+                  maxLength={100}
+                  placeholder="Contoh: 470/123/DS-HPB/2026"
+                  className="field-on-dark w-full rounded-xl border border-slate-700 bg-slate-800 px-3.5 py-2.5 font-mono text-xs text-white outline-none placeholder:text-slate-400 focus:ring-2 focus:ring-emerald-500"
+                />
+                <p className="text-[10px] text-slate-500">
+                  Nomor ini akan tampil pada kolom Catatan / No. Surat di riwayat warga.
+                </p>
+              </div>
+            )}
+
+            <div className="space-y-1.5">
+              <label htmlFor="catatanStatus" className="flex items-center gap-1.5 text-xs font-semibold text-slate-300">
+                <MessageSquareText className="h-3.5 w-3.5" />
+                {statusTarget.status === 'SELESAI' ? 'Catatan / pesan untuk warga' : 'Alasan penolakan'}
+                {statusTarget.status === 'DITOLAK' ? (
+                  <span className="text-rose-400">*</span>
+                ) : (
+                  <span className="text-slate-500">(opsional)</span>
+                )}
+              </label>
+              <textarea
+                id="catatanStatus"
+                value={catatanInput}
+                onChange={(e) => setCatatanInput(e.target.value)}
+                rows={3}
+                maxLength={500}
+                placeholder={
+                  statusTarget.status === 'SELESAI'
+                    ? 'Contoh: Silakan ambil fisik surat di kantor desa pada jam kerja.'
+                    : 'Contoh: Data kependudukan belum lengkap, silakan perbarui di kantor desa.'
+                }
+                className={`field-on-dark w-full resize-none rounded-xl border border-slate-700 bg-slate-800 px-3.5 py-2.5 text-xs text-white outline-none placeholder:text-slate-400 focus:ring-2 ${
+                  statusTarget.status === 'SELESAI' ? 'focus:ring-emerald-500' : 'focus:ring-rose-500'
+                }`}
+              />
+              <p className="text-[10px] text-slate-500">
+                {statusTarget.status === 'SELESAI'
+                  ? 'Opsional, maksimal 500 karakter. Catatan akan tersimpan di riwayat warga.'
+                  : 'Wajib diisi minimal 3 karakter, maksimal 500 karakter.'}
+              </p>
+            </div>
+
+            <div className="flex gap-3 pt-1">
+              <button
+                type="button"
+                onClick={tutupModalStatus}
+                className="flex-1 rounded-xl bg-slate-800 px-4 py-2.5 text-xs font-bold text-slate-300 transition hover:bg-slate-700"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                disabled={
+                  isStatusPending ||
+                  (statusTarget.status === 'DITOLAK' && catatanInput.trim().length < 3)
+                }
+                onClick={() => {
+                  if (statusTarget.status === 'SELESAI') {
+                    ubahStatus(statusTarget.id, 'SELESAI', catatanInput.trim(), nomorInput.trim())
+                  } else {
+                    ubahStatus(statusTarget.id, 'DITOLAK', catatanInput.trim())
+                  }
+                }}
+                className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold text-white shadow-lg transition disabled:cursor-not-allowed disabled:opacity-50 ${
+                  statusTarget.status === 'SELESAI'
+                    ? 'bg-emerald-600 hover:bg-emerald-700'
+                    : 'bg-rose-600 hover:bg-rose-700'
+                }`}
+              >
+                {isStatusPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : statusTarget.status === 'SELESAI' ? (
+                  <CheckCircle2 className="h-4 w-4" />
+                ) : (
+                  <XCircle className="h-4 w-4" />
+                )}
+                {isStatusPending
+                  ? 'Memproses...'
+                  : statusTarget.status === 'SELESAI'
+                    ? 'Ya, Selesaikan'
+                    : 'Ya, Tolak'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

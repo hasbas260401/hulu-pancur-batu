@@ -154,7 +154,7 @@ export default function TabelWargaClient({
         {isPending && (
           <div className="absolute inset-0 bg-white/60 backdrop-blur-3xs flex items-center justify-center z-10 transition-all">
             <div className="inline-flex items-center gap-2 bg-slate-900 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md">
-              <Loader2 className="w-4 h-4 animate-spin text-blue-400" /> Memuat data warga...
+              <Loader2 className="w-4 h-4 animate-spin text-emerald-400" /> Memuat data warga...
             </div>
           </div>
         )}
@@ -210,7 +210,7 @@ export default function TabelWargaClient({
                       <td className="py-3 px-4 font-bold text-slate-800">{warga.nama}</td>
                       <td className="py-3 px-4">
                         <span className={`px-2 py-0.5 rounded-md font-bold text-[10px] ${
-                          warga.jenisKelamin === 'LAKI_LAKI' ? 'bg-blue-50 text-blue-700' : 'bg-pink-50 text-pink-700'
+                          warga.jenisKelamin === 'LAKI_LAKI' ? 'bg-emerald-50 text-emerald-700' : 'bg-pink-50 text-pink-700'
                         }`}>
                           {warga.jenisKelamin === 'LAKI_LAKI' ? 'L' : 'P'}
                         </span>
@@ -358,7 +358,7 @@ export default function TabelWargaClient({
                   name="statusWarga"
                   value={newStatus}
                   onChange={(e) => setNewStatus(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold cursor-pointer"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 font-bold cursor-pointer"
                 >
                   <option value="AKTIF">Warga Aktif</option>
                   <option value="MENINGGAL">Meninggal Dunia</option>
@@ -375,7 +375,7 @@ export default function TabelWargaClient({
                       name="tanggalMeninggal"
                       value={tanggalMeninggal}
                       onChange={(e) => setTanggalMeninggal(e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
                       required
                     />
                   </div>
@@ -387,7 +387,7 @@ export default function TabelWargaClient({
                       value={keterangan}
                       onChange={(e) => setKeterangan(e.target.value)}
                       placeholder="Contoh: Sakit di RS, Usia Lanjut, dll."
-                      className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     />
                   </div>
                 </div>
@@ -402,7 +402,7 @@ export default function TabelWargaClient({
                       name="tanggalPindah"
                       value={tanggalPindah}
                       onChange={(e) => setTanggalPindah(e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
                       required
                     />
                   </div>
@@ -414,7 +414,7 @@ export default function TabelWargaClient({
                       value={keterangan}
                       onChange={(e) => setKeterangan(e.target.value)}
                       placeholder="Contoh: Kota Medan, Kec. Medan Tembung..."
-                      className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
                       required
                     />
                   </div>
@@ -426,7 +426,7 @@ export default function TabelWargaClient({
                       value={alasanPindah}
                       onChange={(e) => setAlasanPindah(e.target.value)}
                       placeholder="Contoh: Bekerja, Mengikuti Keluarga, dll."
-                      className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
                       required
                     />
                   </div>
@@ -442,7 +442,7 @@ export default function TabelWargaClient({
                     value={keterangan}
                     onChange={(e) => setKeterangan(e.target.value)}
                     placeholder="Contoh: Kembali menetap di desa..."
-                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
               )}
@@ -459,7 +459,7 @@ export default function TabelWargaClient({
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition shadow-xs cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+                className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition shadow-xs cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
               >
                 {isSubmitting ? (
                   <>

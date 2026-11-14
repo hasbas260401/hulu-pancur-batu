@@ -11,10 +11,68 @@ export type ServiceIcon = "file" | "report" | "hand" | "landmark";
 export type NewsIcon = "announcement" | "activity" | "development";
 export type NewsCategory = "Pengumuman" | "Kegiatan" | "Pembangunan";
 
+/**
+ * Sumber nilai untuk statistik ringkas di halaman depan.
+ *
+ * - `manual`     : diisi sendiri oleh operator (mis. luas wilayah).
+ * - `population` : total warga aktif dari tabel `Warga`.
+ * - `households` : total kartu keluarga dari tabel `KartuKeluarga`.
+ * - `villages`   : jumlah dusun dari tabel `Dusun`.
+ *
+ * Nilai otomatis selalu dihitung ulang saat halaman dirender sehingga tidak
+ * pernah basi walaupun data di database berubah.
+ */
+export type FactSource = "manual" | "population" | "households" | "villages";
+
 export interface LandingQuickFact {
   icon: FactIcon;
   label: string;
   value: string;
+  source?: FactSource;
+}
+
+/** Bagian statistik kependudukan yang dibutuhkan untuk nilai otomatis. */
+export interface QuickFactStats {
+  totalWarga: number;
+  totalKK: number;
+  totalDusun: number;
+}
+
+const countFormatter = new Intl.NumberFormat("id-ID");
+const rupiahFormatter = new Intl.NumberFormat("id-ID", {
+  maximumFractionDigits: 0,
+});
+
+/** Format angka dengan pemisah ribuan gaya Indonesia (mis. 4.328). */
+export function formatCount(value: number): string {
+  return countFormatter.format(Number.isFinite(value) ? value : 0);
+}
+
+/** Format nominal rupiah tanpa desimal (mis. Rp 1.411.000.000). */
+export function formatRupiah(value: number): string {
+  return `Rp ${rupiahFormatter.format(Number.isFinite(value) ? value : 0)}`;
+}
+
+/**
+ * Hitung nilai tampilan untuk statistik ringkas berdasarkan sumbernya.
+ * Mengembalikan `null` bila sumbernya manual atau statistik belum tersedia.
+ */
+export function quickFactValue(
+  source: FactSource | undefined,
+  stats: QuickFactStats | null | undefined
+): string | null {
+  if (!stats) return null;
+
+  switch (source) {
+    case "population":
+      return `${formatCount(stats.totalWarga)} jiwa`;
+    case "households":
+      return `${formatCount(stats.totalKK)} KK`;
+    case "villages":
+      return `${formatCount(stats.totalDusun)} dusun`;
+    default:
+      return null;
+  }
 }
 
 export interface LandingServiceItem {
@@ -52,8 +110,14 @@ export interface LandingBudgetSummary {
 
 export interface LandingBudgetSplit {
   label: string;
+  /** Persentase bagian ini terhadap total pagu belanja. */
   pct: number;
+  /** Pagu anggaran untuk bidang ini, sudah diformat rupiah. */
   amount: string;
+  /** Realisasi bidang ini, sudah diformat rupiah. */
+  realized?: string;
+  /** Persentase realisasi terhadap pagu bidang ini. */
+  realizedPct?: number;
 }
 
 export interface LandingContent {
@@ -185,9 +249,9 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
       "Jam layanan: Senin sampai Kamis 08.00 - 15.00, Jumat 08.00 - 11.30.",
   },
   quickFacts: [
-    { icon: "trees", label: "Luas wilayah", value: "12,4 km²" },
-    { icon: "users", label: "Jumlah penduduk", value: "4.328 jiwa" },
-    { icon: "home", label: "Jumlah dusun", value: "5 dusun" },
+    { icon: "trees", label: "Luas wilayah", value: "12,4 km²", source: "manual" },
+    { icon: "users", label: "Jumlah penduduk", value: "4.328 jiwa", source: "population" },
+    { icon: "home", label: "Jumlah dusun", value: "5 dusun", source: "villages" },
   ],
   services: {
     title: "Layanan mandiri untuk warga",
@@ -259,7 +323,7 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
   transparency: {
     title: "Statistik dan transparansi anggaran",
     description:
-      "Angka ringkas kependudukan dan realisasi APBDes tahun 2026. Data contoh, perbarui setiap bulan.",
+      "Angka kependudukan diambil otomatis dari data desa, dilengkapi realisasi APBDes tahun berjalan.",
     actionLabel: "Unduh laporan APBDes",
     year: "2026",
     budgetTitle: "APBDes 2026",
@@ -275,35 +339,8 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
       male: 2151,
       female: 2177,
     },
-    budgetSummary: [
-      {
-        label: "Pendapatan",
-        target: "Rp 1,92 M",
-        realized: "Rp 1,41 M",
-        pct: 73,
-      },
-      {
-        label: "Belanja",
-        target: "Rp 1,92 M",
-        realized: "Rp 1,18 M",
-        pct: 61,
-      },
-    ],
-    budgetSplit: [
-      { label: "Pembangunan desa", pct: 38, amount: "Rp 730 jt" },
-      {
-        label: "Penyelenggaraan pemerintahan",
-        pct: 22,
-        amount: "Rp 422 jt",
-      },
-      { label: "Pemberdayaan masyarakat", pct: 18, amount: "Rp 346 jt" },
-      { label: "Pembinaan kemasyarakatan", pct: 14, amount: "Rp 269 jt" },
-      {
-        label: "Penanggulangan bencana dan darurat",
-        pct: 8,
-        amount: "Rp 153 jt",
-      },
-    ],
+    budgetSummary: [],
+    budgetSplit: [],
   },
   footer: {
     description:

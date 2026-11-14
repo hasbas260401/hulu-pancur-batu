@@ -101,7 +101,7 @@ export default function FormUserManagement({ userToEdit, dusuns, createUserActio
             defaultValue={userToEdit?.username || ''}
             placeholder="Contoh: kadus2 atau NIK Warga"
             required
-            className="w-full h-10 pl-10 pr-3.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition outline-none font-semibold text-slate-800 text-xs"
+            className="w-full h-10 pl-10 pr-3.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition outline-none font-semibold text-slate-800 text-xs"
           />
         </div>
       </div>
@@ -122,7 +122,7 @@ export default function FormUserManagement({ userToEdit, dusuns, createUserActio
               minLength={8}
               maxLength={72}
               autoComplete="new-password"
-              className="w-full h-10 pl-10 pr-3.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition outline-none text-xs"
+              className="w-full h-10 pl-10 pr-3.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition outline-none text-xs"
             />
           </div>
         </div>
@@ -140,7 +140,7 @@ export default function FormUserManagement({ userToEdit, dusuns, createUserActio
               name="role"
               value={role}
               onChange={(e) => handleRoleChange(e.target.value)}
-              className="w-full h-10 pl-10 pr-3 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 font-medium text-slate-700 transition outline-none cursor-pointer text-xs appearance-none"
+              className="w-full h-10 pl-10 pr-3 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 font-medium text-slate-700 transition outline-none cursor-pointer text-xs appearance-none"
             >
               <option value="WARGA">Warga Mandiri</option>
               <option value="KADUS">Kepala Dusun</option>
@@ -155,7 +155,7 @@ export default function FormUserManagement({ userToEdit, dusuns, createUserActio
             name="statusAkun"
             value={statusAkun}
             onChange={(e) => setStatusAkun(e.target.value)}
-            className="w-full h-10 px-3 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 font-semibold text-slate-700 transition outline-none cursor-pointer text-xs"
+            className="w-full h-10 px-3 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 font-semibold text-slate-700 transition outline-none cursor-pointer text-xs"
           >
             <option value="ACTIVE">🟢 Aktif</option>
             <option value="PENDING">🟡 Pending</option>
@@ -168,9 +168,9 @@ export default function FormUserManagement({ userToEdit, dusuns, createUserActio
       {/* Wilayah Tugas Dusun */}
       {role === 'KADUS' && (
         <div className="space-y-1.5">
-          <label className="block font-semibold text-blue-800">Wilayah Tugas Dusun</label>
+          <label className="block font-semibold text-emerald-800">Wilayah Tugas Dusun</label>
           <div className="relative flex items-center">
-            <span className="absolute left-3.5 text-blue-500 pointer-events-none">
+            <span className="absolute left-3.5 text-emerald-500 pointer-events-none">
               <MapPin className="w-4 h-4" />
             </span>
             <select
@@ -178,7 +178,7 @@ export default function FormUserManagement({ userToEdit, dusuns, createUserActio
               value={dusunId}
               onChange={(e) => setDusunId(e.target.value)}
               required={role === 'KADUS'}
-              className="w-full h-10 pl-10 pr-3 rounded-xl border border-blue-200 bg-blue-50/60 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 font-bold text-blue-900 transition outline-none cursor-pointer text-xs appearance-none"
+              className="w-full h-10 pl-10 pr-3 rounded-xl border border-emerald-200 bg-emerald-50/60 focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 font-bold text-emerald-900 transition outline-none cursor-pointer text-xs appearance-none"
             >
               <option value="">-- Pilih Dusun Penugasan --</option>
               {dusuns.map((dusun) => (
@@ -203,7 +203,7 @@ export default function FormUserManagement({ userToEdit, dusuns, createUserActio
             name="noWhatsapp"
             defaultValue={userToEdit?.noWhatsapp || ''}
             placeholder="081234567890"
-            className="w-full h-10 pl-10 pr-3.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition outline-none text-xs"
+            className="w-full h-10 pl-10 pr-3.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition outline-none text-xs"
           />
         </div>
       </div>
@@ -225,11 +225,11 @@ export default function FormUserManagement({ userToEdit, dusuns, createUserActio
                 <label 
                   key={menu.id} 
                   className={`flex items-center justify-between px-2.5 py-2 rounded-lg transition cursor-pointer ${
-                    isChecked ? 'bg-blue-50 text-blue-900 font-bold' : 'hover:bg-slate-100/80 text-slate-700 font-medium'
+                    isChecked ? 'bg-emerald-50 text-emerald-900 font-bold' : 'hover:bg-slate-100/80 text-slate-700 font-medium'
                   }`}
                 >
                   <span className="inline-flex items-center gap-2">
-                    <IconComponent className={`w-4 h-4 ${isChecked ? 'text-blue-600' : 'text-slate-400'}`} />
+                    <IconComponent className={`w-4 h-4 ${isChecked ? 'text-emerald-600' : 'text-slate-400'}`} />
                     {menu.label}
                   </span>
                   <input
@@ -238,7 +238,7 @@ export default function FormUserManagement({ userToEdit, dusuns, createUserActio
                     value={menu.id}
                     checked={isChecked}
                     onChange={() => handleCheckboxChange(menu.id)}
-                    className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300 cursor-pointer accent-blue-600"
+                    className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300 cursor-pointer accent-emerald-600"
                   />
                 </label>
               )
@@ -286,7 +286,7 @@ export default function FormUserManagement({ userToEdit, dusuns, createUserActio
       <div className="flex gap-2 pt-2">
         <button
           type="submit"
-          className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white font-bold rounded-xl shadow-sm transition cursor-pointer text-xs flex items-center justify-center gap-2"
+          className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white font-bold rounded-xl shadow-sm transition cursor-pointer text-xs flex items-center justify-center gap-2"
         >
           {userToEdit ? 'Perbarui Hak Akses' : 'Simpan Akun Baru'}
         </button>

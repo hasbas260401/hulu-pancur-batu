@@ -539,43 +539,62 @@ function Transparency({
                 </h3>
               </div>
 
-              <div className="mt-6 grid gap-6 sm:grid-cols-2">
-                {section.budgetSummary.map((b, index) => (
-                  <div key={`${b.label}-${index}`}>
-                    <div className="flex items-baseline justify-between">
-                      <p className="text-sm font-medium text-slate-600">{b.label}</p>
-                      <p className="text-sm font-semibold text-slate-900">{b.pct}%</p>
-                    </div>
-                    <div className="mt-2">
-                      <ProgressBar pct={b.pct} />
-                    </div>
-                    <p className="mt-2 text-sm text-slate-500">
-                      {labels.realizedPrefix} {b.realized} {labels.realizedFrom} {b.target}
-                    </p>
+              {section.budgetSummary.length === 0 ? (
+                <p className="mt-6 rounded-xl border border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
+                  Belum ada data anggaran yang dipublikasikan untuk tahun{" "}
+                  {section.year}.
+                </p>
+              ) : (
+                <>
+                  <div className="mt-6 grid gap-6 sm:grid-cols-2">
+                    {section.budgetSummary.map((b, index) => (
+                      <div key={`${b.label}-${index}`}>
+                        <div className="flex items-baseline justify-between">
+                          <p className="text-sm font-medium text-slate-600">{b.label}</p>
+                          <p className="text-sm font-semibold text-slate-900">{b.pct}%</p>
+                        </div>
+                        <div className="mt-2">
+                          <ProgressBar pct={b.pct} />
+                        </div>
+                        <p className="mt-2 text-sm text-slate-500">
+                          {labels.realizedPrefix} {b.realized} {labels.realizedFrom} {b.target}
+                        </p>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
 
-              <div className="mt-8 border-t border-slate-100 pt-6">
-                <h4 className="text-sm font-semibold text-slate-900">
-                  {labels.budgetSplitTitle}
-                </h4>
-                <ul className="mt-4 space-y-4">
-                  {section.budgetSplit.map((row, index) => (
-                    <li key={`${row.label}-${index}`}>
-                      <div className="flex items-baseline justify-between gap-3 text-sm">
-                        <span className="text-slate-700">{row.label}</span>
-                        <span className="shrink-0 font-semibold text-slate-900">
-                          {row.amount}
-                        </span>
-                      </div>
-                      <div className="mt-1.5">
-                        <ProgressBar pct={row.pct * 2.2} tone="teal" />
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+                  {section.budgetSplit.length > 0 && (
+                    <div className="mt-8 border-t border-slate-100 pt-6">
+                      <h4 className="text-sm font-semibold text-slate-900">
+                        {labels.budgetSplitTitle}
+                      </h4>
+                      <ul className="mt-4 space-y-4">
+                        {section.budgetSplit.map((row, index) => (
+                          <li key={`${row.label}-${index}`}>
+                            <div className="flex items-baseline justify-between gap-3 text-sm">
+                              <span className="text-slate-700">{row.label}</span>
+                              <span className="shrink-0 font-semibold text-slate-900">
+                                {row.amount}
+                              </span>
+                            </div>
+                            <div className="mt-1.5">
+                              <ProgressBar pct={row.pct} tone="teal" />
+                            </div>
+                            {row.realized && (
+                              <p className="mt-1.5 text-xs text-slate-500">
+                                {labels.realizedPrefix} {row.realized}
+                                {typeof row.realizedPct === "number"
+                                  ? ` (${row.realizedPct}%)`
+                                  : ""}
+                              </p>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </>
+              )}
 
               {section.budgetNote && (
                 <p className="mt-6 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">

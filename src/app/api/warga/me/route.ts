@@ -1,14 +1,11 @@
-import { NextResponse } from 'next/server'
+import { NextResponse, connection } from 'next/server'
 import { auth } from '@/auth'
-import { PrismaClient } from '@prisma/client'
-
-const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient }
-const prisma = globalForPrisma.prisma ?? new PrismaClient()
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
+import { prisma } from '@/lib/prisma'
 
 const NO_STORE = { 'Cache-Control': 'no-store' }
 
 export async function GET() {
+  await connection()
   try {
     const session = await auth()
     const userId = (session?.user as any)?.id as string | undefined

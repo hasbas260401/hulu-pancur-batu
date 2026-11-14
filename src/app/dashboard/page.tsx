@@ -1,13 +1,99 @@
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import { connection } from 'next/server'
 import { Suspense } from 'react'
 import { auth } from '@/auth'
 import { redirect } from 'next/navigation'
-import ResetDbModal from './ResetDbModal'
 import DashboardClient from './DashboardClient'
+import SuratPendingBanner from './SuratPendingBanner'
+import type { DemographicPoint, ReligionPoint } from './DashboardCharts'
 import { Sparkles } from 'lucide-react'
 
-const prisma = new PrismaClient()
+type CountRow = { dusunId: number; _count: { _all: number } }
+
+type ChartRows = [
+  { id: number; nama: string }[],
+  (CountRow & { jenisKelamin: string })[],
+  (CountRow & { agama: string | null })[],
+  CountRow[],
+]
+
+/**
+ * Ubah hasil agregasi database menjadi data grafik siap pakai.
+ * Semua perhitungan dilakukan di SQL, lalu hanya angka kecil yang dikirim
+ * ke browser — bukan seluruh baris tabel warga.
+ */
+function buildChartData(rows: ChartRows | null): {
+  demographicData: DemographicPoint[]
+  religionData: ReligionPoint[]
+} {
+  if (!rows) return { demographicData: [], religionData: [] }
+
+  const [dusunList, genderGroups, religionGroups, kkGroups] = rows
+
+  type Bucket = {
+    name: string
+    laki: number
+    perempuan: number
+    kk: number
+    total: number
+    agama: Record<string, number>
+  }
+
+  const buckets = new Map<number, Bucket>()
+  for (const dusun of dusunList) {
+    buckets.set(dusun.id, {
+      name: dusun.nama,
+      laki: 0,
+      perempuan: 0,
+      kk: 0,
+      total: 0,
+      agama: {},
+    })
+  }
+
+  for (const group of genderGroups) {
+    const bucket = buckets.get(group.dusunId)
+    if (!bucket) continue
+    const jumlah = group._count._all
+    bucket.total += jumlah
+    if (group.jenisKelamin === 'LAKI_LAKI' || group.jenisKelamin === 'L') bucket.laki += jumlah
+    else if (group.jenisKelamin === 'PEREMPUAN' || group.jenisKelamin === 'P') bucket.perempuan += jumlah
+  }
+
+  for (const group of religionGroups) {
+    const bucket = buckets.get(group.dusunId)
+    if (!bucket) continue
+    const kunci = (group.agama ?? '').trim().toLowerCase()
+    if (!kunci) continue
+    bucket.agama[kunci] = (bucket.agama[kunci] ?? 0) + group._count._all
+  }
+
+  for (const group of kkGroups) {
+    const bucket = buckets.get(group.dusunId)
+    if (bucket) bucket.kk += group._count._all
+  }
+
+  const values = [...buckets.values()]
+  return {
+    demographicData: values.map((v) => ({
+      name: v.name,
+      'Laki-Laki': v.laki,
+      Perempuan: v.perempuan,
+      'Kartu Keluarga': v.kk,
+      'Total Warga': v.total,
+    })),
+    religionData: values.map((v) => ({
+      name: v.name,
+      Islam: v.agama['islam'] ?? 0,
+      Kristen: v.agama['kristen'] ?? 0,
+      Katolik: v.agama['katolik'] ?? 0,
+      Hindu: v.agama['hindu'] ?? 0,
+      Buddha: v.agama['buddha'] ?? 0,
+      Konghucu: v.agama['konghucu'] ?? 0,
+    })),
+  }
+}
+
 
 export default function DashboardPage() {
   return (
@@ -15,7 +101,7 @@ export default function DashboardPage() {
       fallback={
         <div className="flex items-center justify-center min-h-[50vh] w-full">
           <div className="flex items-center gap-3 bg-slate-900 text-white px-5 py-3 rounded-xl text-xs font-bold shadow-lg">
-            <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+            <div className="w-4 h-4 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin"></div>
             <span>Memuat data...</span>
           </div>
         </div>
@@ -51,10 +137,6 @@ async function DashboardContent() {
     dusunNama: me.dusun?.nama ?? null,
   }
   const role = me.role as string
-
-  // Tombol "Kosongkan Database" hanya muncul saat development, atau di produksi bila
-  // ALLOW_DB_RESET=true sengaja dinyalakan (rute /api/admin/reset-db memeriksa hal yang sama)
-  const resetEnabled = process.env.NODE_ENV !== 'production' || process.env.ALLOW_DB_RESET === 'true'
 
   // =========================================================
   // SOLUSI UTAMA: Jika role pengguna adalah WARGA,
@@ -104,7 +186,7 @@ async function DashboardContent() {
     agamaBuddha,
     agamaKonghucu,
     totalBansos,
-    daftarDusun
+    chartRows
   ] = await Promise.all([
     prisma.warga.count({ where: filterDusunWarga }),
     prisma.kartuKeluarga.count({ where: filterDusunKK }),
@@ -125,23 +207,42 @@ async function DashboardContent() {
     prisma.bansos ? prisma.bansos.count({
       where: { status: 'AKTIF', ...filterDusunBansos }
     }) : Promise.resolve(0),
-    
-    // Ambil daftar dusun beserta relasi warganya secara efisien
-    role === 'ADMIN' ? prisma.dusun.findMany({
-      include: {
-        warga: {
-          select: {
-            id: true,
-            jenisKelamin: true,
-            agama: true,
-            kkId: true,
-            bansos: { select: { status: true } }
-          }
-        }
-      },
-      orderBy: { nama: 'asc' }
-    }) : Promise.resolve([])
+
+    // Data grafik dihitung di database (bukan dengan mengirim seluruh baris warga
+    // ke browser). Ini menjaga ukuran muatan halaman tetap kecil meskipun jumlah
+    // warga terus bertambah.
+    role === 'ADMIN'
+      ? Promise.all([
+          prisma.dusun.findMany({
+            select: { id: true, nama: true },
+            orderBy: { nama: 'asc' },
+          }),
+          prisma.warga.groupBy({
+            by: ['dusunId', 'jenisKelamin'],
+            _count: { _all: true },
+          }),
+          prisma.warga.groupBy({
+            by: ['dusunId', 'agama'],
+            _count: { _all: true },
+          }),
+          prisma.kartuKeluarga.groupBy({
+            by: ['dusunId'],
+            _count: { _all: true },
+          }),
+        ])
+      : Promise.resolve(null)
   ])
+
+  const { demographicData, religionData } = buildChartData(chartRows)
+
+  // Permohonan surat warga yang belum diproses (Pending). KADUS hanya melihat
+  // dusun penugasannya, ADMIN melihat seluruh desa.
+  const suratMasukPending = await prisma.pengajuanSurat.count({
+    where: {
+      status: 'DIAJUKAN',
+      ...(isKadus && userDusunId ? { dusunId: userDusunId } : {}),
+    },
+  })
 
   const stats = {
     totalWarga,
@@ -164,29 +265,27 @@ async function DashboardContent() {
       {/* Header Dashboard */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-5">
         <div>
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold mb-2">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold mb-2">
             <Sparkles className="w-3.5 h-3.5" />
             <span>{isKadus ? `Wilayah Kerja: ${user?.dusunNama || 'Dusun Anda'}` : 'Panel Kontrol Utama Desa'}</span>
           </div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">Dashboard Utama</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-800">Dashboard Utama</h1>
           <p className="text-sm text-slate-500 mt-0.5">
             {isKadus
               ? `Ringkasan data kependudukan dan statistik spesifik wilayah penugasan.`
               : 'Ringkasan data kependudukan menyeluruh dari Dusun I sampai Dusun V.'}
           </p>
         </div>
-
-        {role === 'ADMIN' && resetEnabled && (
-          <div>
-            <ResetDbModal />
-          </div>
-        )}
       </div>
+
+      {/* Notifikasi surat masuk (diperbarui otomatis lewat polling) */}
+      <SuratPendingBanner initialCount={suratMasukPending} />
 
       {/* Render Komponen Interaktif (Grafik & Animasi Hitung) */}
       <DashboardClient 
         stats={stats} 
-        daftarDusun={daftarDusun} 
+        demographicData={demographicData}
+        religionData={religionData}
         isKadus={isKadus} 
         user={user} 
       />

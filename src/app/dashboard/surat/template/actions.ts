@@ -1,14 +1,11 @@
 'use server'
 
-import { PrismaClient, Prisma } from '@prisma/client'
+import { Prisma } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import fs from 'fs/promises'
 import path from 'path'
 import { revalidatePath } from 'next/cache'
 import { requireAdmin } from '@/lib/require-admin'
-
-const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient }
-const prisma = globalForPrisma.prisma ?? new PrismaClient()
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
 
 const MAX_SIZE = 5 * 1024 * 1024 // 5 MB
 const TEMPLATE_DIR = path.join(process.cwd(), 'public', 'templates')

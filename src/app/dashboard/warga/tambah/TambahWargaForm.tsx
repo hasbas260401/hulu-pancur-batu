@@ -118,7 +118,7 @@ export default function TambahWargaForm({
   return (
     <form onSubmit={handleSubmit} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
         <h2 className="font-bold text-slate-800 text-sm uppercase tracking-wide border-b border-slate-100 pb-3 flex items-center gap-2">
-          <UserPlus className="w-4 h-4 text-blue-600" />
+          <UserPlus className="w-4 h-4 text-emerald-600" />
           <span>Form Identitas Kependudukan</span>
         </h2>
 
@@ -141,7 +141,7 @@ export default function TambahWargaForm({
               pattern="\d{16}"
               title="16 digit angka"
               placeholder="16 Digit NIK"
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
 
@@ -156,7 +156,7 @@ export default function TambahWargaForm({
               pattern="\d{16}"
               title="16 digit angka"
               placeholder="16 Digit Nomor KK"
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
 
@@ -167,7 +167,7 @@ export default function TambahWargaForm({
               name="nama"
               required
               placeholder="Masukkan nama lengkap"
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
 
@@ -175,7 +175,7 @@ export default function TambahWargaForm({
             <label className="block text-xs font-semibold text-slate-600 mb-1">Jenis Kelamin *</label>
             <select
               name="jenisKelamin"
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500"
             >
               <option value="LAKI_LAKI">Laki-laki</option>
               <option value="PEREMPUAN">Perempuan</option>
@@ -188,7 +188,7 @@ export default function TambahWargaForm({
               name="dusunId"
               defaultValue={lockedDusunId ?? ''}
               required
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500"
             >
               <option value="" disabled>-- Pilih Dusun --</option>
               {dusunList.map((d) => (
@@ -205,7 +205,7 @@ export default function TambahWargaForm({
               type="text"
               name="tempatLahir"
               placeholder="Contoh: Medan"
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
 
@@ -215,7 +215,7 @@ export default function TambahWargaForm({
               type="date"
               name="tanggalLahir"
               required
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
 
@@ -224,7 +224,7 @@ export default function TambahWargaForm({
             <select
               name="agama"
               defaultValue="ISLAM"
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500"
             >
               <option value="ISLAM">Islam</option>
               <option value="KRISTEN">Kristen</option>
@@ -240,7 +240,7 @@ export default function TambahWargaForm({
             <select
               name="statusPerkawinan"
               defaultValue="Belum Kawin"
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500"
             >
               <option value="Belum Kawin">Belum Kawin</option>
               <option value="Kawin">Kawin</option>
@@ -254,7 +254,7 @@ export default function TambahWargaForm({
             <select
               name="pekerjaan"
               defaultValue="PELAJAR/MAHASISWA"
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:outline-none text-xs bg-white font-medium text-slate-800"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 focus:outline-none text-xs bg-white font-medium text-slate-800"
             >
               {DAFTAR_PEKERJAAN_RESMI.map((pek) => (
                 <option key={pek} value={pek}>
@@ -270,7 +270,7 @@ export default function TambahWargaForm({
               name="alamat"
               rows={2}
               placeholder="Masukkan alamat RT/RW atau nama jalan untuk KK baru..."
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500"
             ></textarea>
           </div>
         </div>
@@ -285,7 +285,7 @@ export default function TambahWargaForm({
           <button
             type="submit"
             disabled={saving}
-            className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow-sm transition flex items-center gap-2 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+            className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-xl shadow-sm transition flex items-center gap-2 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             <span>{saving ? 'Menyimpan…' : 'Simpan Data Warga'}</span>

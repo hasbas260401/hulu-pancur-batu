@@ -49,13 +49,13 @@ export default function ResetPasswordPage() {
   const isPasswordStrong = (pass: string) => {
     const hasLetter = /[a-zA-Z]/.test(pass)
     const hasNumber = /[0-9]/.test(pass)
-    return pass.length >= 6 && hasLetter && hasNumber
+    return pass.length >= 8 && hasLetter && hasNumber
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!isPasswordStrong(password)) {
-      setError('Password harus gabungan huruf dan angka, minimal 6 karakter.')
+      setError('Password harus gabungan huruf dan angka, minimal 8 karakter.')
       return
     }
     if (password !== confirmPassword) {
@@ -213,7 +213,7 @@ export default function ResetPasswordPage() {
                           required
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
-                          placeholder="Min. 6 karakter (Huruf & Angka)"
+                          placeholder="Min. 8 karakter (Huruf & Angka)"
                           className="w-full h-11 px-4 pr-16 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-600/20 focus:border-emerald-600 focus:bg-white focus:outline-none text-slate-900 text-sm"
                         />
                         <div className="absolute inset-y-0 right-0 pr-2.5 flex items-center gap-1">
@@ -231,7 +231,7 @@ export default function ResetPasswordPage() {
                         </div>
                       </div>
                       <p className={`text-xs ${isPasswordStrong(password) ? 'text-emerald-600 font-medium' : 'text-slate-400'}`}>
-                        Harus gabungan huruf dan angka, minimal 6 karakter.
+                        Harus gabungan huruf dan angka, minimal 8 karakter.
                       </p>
                     </div>
 

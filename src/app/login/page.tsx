@@ -1,8 +1,6 @@
 import { Suspense } from 'react'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import LoginFormClient from './LoginFormClient'
-
-const prisma = new PrismaClient()
 
 async function LoginWithLogo() {
   const settings = await prisma.webSettings.findFirst().catch(() => null)

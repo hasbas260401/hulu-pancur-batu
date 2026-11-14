@@ -1,18 +1,18 @@
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import { connection } from 'next/server'
 import { Suspense } from 'react'
-import { auth } from '@/auth'
+import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
+import { getScope } from '@/lib/warga-scope'
+import { requireAdmin } from '@/lib/require-admin'
 import RiwayatSuratClient from './RiwayatSuratClient'
-
-const prisma = new PrismaClient()
+import { ubahStatusSuratAction } from './actions'
 
 async function clearRiwayatAction() {
   'use server'
-  const session = await auth()
-  const user = session?.user as any
-
-  if (user?.role !== 'ADMIN') {
+  // Peran dibaca dari database, bukan dari token.
+  const admin = await requireAdmin()
+  if (!admin.ok) {
     throw new Error('Akses ditolak! Hanya Admin yang dapat menghapus atau mengarsip riwayat surat.')
   }
 
@@ -23,14 +23,14 @@ async function clearRiwayatAction() {
 export default function RiwayatSuratPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; filter?: string; date?: string; page?: string }>
+  searchParams: Promise<{ q?: string; filter?: string; date?: string; status?: string; page?: string }>
 }) {
   return (
     <Suspense 
       fallback={
         <div className="flex items-center justify-center min-h-[50vh] w-full">
           <div className="flex items-center gap-3 bg-slate-900 text-white px-5 py-3 rounded-xl text-xs font-bold shadow-lg">
-            <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+            <div className="w-4 h-4 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin"></div>
             <span>Memuat data...</span>
           </div>
         </div>
@@ -44,7 +44,7 @@ export default function RiwayatSuratPage({
 async function RiwayatContent({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; filter?: string; date?: string; page?: string }>
+  searchParams: Promise<{ q?: string; filter?: string; date?: string; status?: string; page?: string }>
 }) {
   await connection()
   const resolvedParams = await searchParams
@@ -53,32 +53,48 @@ async function RiwayatContent({
   const filterType = resolvedParams.filter || 'all'
   const dateQuery = resolvedParams.date || ''
 
+  const STATUS_TABS = ['SEMUA', 'DIAJUKAN', 'DIVERIFIKASI', 'SELESAI', 'DITOLAK'] as const
+  const rawStatus = (resolvedParams.status || 'SEMUA').toUpperCase()
+  const statusFilter = (STATUS_TABS as readonly string[]).includes(rawStatus) ? rawStatus : 'SEMUA'
+
   // Konfigurasi Pagination: 10 data per halaman sesuai permintaan
   const PAGE_SIZE = 10
   const currentPage = Number(resolvedParams.page) || 1
   const skip = (currentPage - 1) * PAGE_SIZE
 
-  const session = await auth()
-  const user = session?.user as any
+  const scope = await getScope('surat', 'riwayat surat')
+  if (!scope.ok) {
+    redirect(scope.status === 401 ? '/login' : '/dashboard')
+  }
 
-  const isKadus = user?.role === 'KADUS'
-  const userDusunId = user?.dusunId
+  const isKadus = scope.role === 'KADUS'
 
-  const dusunCondition = isKadus && userDusunId 
-    ? { 
-        OR: [
-          { dusunId: userDusunId },
-          { warga: { dusunId: userDusunId } }
-        ] 
-      } 
-    : {}
+  const dusunCondition = isKadus ? { dusunId: scope.dusunFilter.dusunId } : {}
+
+  // Jumlah per status (mengikuti scoping dusun, tanpa filter pencarian) untuk
+  // tab ringkasan surat masuk.
+  const [countDiajukan, countDiverifikasi, countSelesai, countDitolak] = await Promise.all([
+    prisma.pengajuanSurat.count({ where: { ...dusunCondition, status: 'DIAJUKAN' } }),
+    prisma.pengajuanSurat.count({ where: { ...dusunCondition, status: 'DIVERIFIKASI' } }),
+    prisma.pengajuanSurat.count({ where: { ...dusunCondition, status: 'SELESAI' } }),
+    prisma.pengajuanSurat.count({ where: { ...dusunCondition, status: 'DITOLAK' } }),
+  ])
+  const statusCounts = {
+    SEMUA: countDiajukan + countDiverifikasi + countSelesai + countDitolak,
+    DIAJUKAN: countDiajukan,
+    DIVERIFIKASI: countDiverifikasi,
+    SELESAI: countSelesai,
+    DITOLAK: countDitolak,
+  }
+
+  const statusCondition = statusFilter === 'SEMUA' ? {} : { status: statusFilter }
 
   let searchCondition: any = {}
 
   if (query.trim() !== '') {
     if (filterType === 'nama') {
       searchCondition.warga = {
-        ...(isKadus && userDusunId ? { dusunId: userDusunId } : {}),
+        ...(isKadus ? { dusunId: scope.dusunFilter.dusunId } : {}),
         nama: { contains: query, mode: 'insensitive' }
       }
     } else if (filterType === 'nomor') {
@@ -107,7 +123,8 @@ async function RiwayatContent({
   const finalWhere = {
     AND: [
       dusunCondition,
-      searchCondition
+      searchCondition,
+      statusCondition,
     ]
   }
 
@@ -116,7 +133,7 @@ async function RiwayatContent({
 
   const riwayat = await prisma.pengajuanSurat.findMany({
     where: finalWhere,
-    orderBy: { createdAt: 'desc' },
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     include: {
       warga: true,
       template: true,
@@ -128,10 +145,13 @@ async function RiwayatContent({
   return (
     <RiwayatSuratClient
       initialRiwayat={riwayat}
-      isAdmin={!isKadus}
+      isAdmin={scope.role === 'ADMIN'}
       isKadus={isKadus}
-      dusunNama={user?.dusunNama}
+      dusunNama={scope.dusunNama ?? undefined}
       clearAction={clearRiwayatAction}
+      statusAction={ubahStatusSuratAction}
+      currentStatus={statusFilter}
+      statusCounts={statusCounts}
       currentPage={currentPage}
       totalPages={totalPages}
       totalFilteredRiwayat={totalFilteredRiwayat}

@@ -1,27 +1,50 @@
 'use client'
 
-import { useState, useTransition } from 'react'
-import { Trash2, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
+import { Fragment, useEffect, useState, useTransition } from 'react'
+import type { FormEvent } from 'react'
+import { Pencil, Trash2, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
+
+const JENIS_OPTIONS = [
+  { value: 'PENDAPATAN', label: 'Pendapatan' },
+  { value: 'BELANJA', label: 'Belanja' },
+  { value: 'PEMBIAYAAN', label: 'Pembiayaan' },
+]
+
+const editInputClass =
+  'w-full px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-xs text-slate-700 outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20'
 
 export default function TabelTransparansiClient({ 
   initialData, 
   totalFilteredDana, 
   tahunFilter, 
   jenisFilter, 
-  hapusDanaAction 
+  hapusDanaAction,
+  ubahDanaAction,
 }: { 
   initialData: any[]; 
   totalFilteredDana: number; 
   tahunFilter: number; 
   jenisFilter: string; 
   hapusDanaAction: any;
+  ubahDanaAction: any;
 }) {
   const [data, setData] = useState(initialData)
   const [currentPage, setCurrentPage] = useState(1)
   const [isPending, startTransition] = useTransition()
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editError, setEditError] = useState<string | null>(null)
 
   const PAGE_SIZE = 4
   const totalPages = Math.ceil(totalFilteredDana / PAGE_SIZE)
+
+  // Sinkronkan tabel ketika server component selesai memuat ulang data
+  // (setelah tambah/ubah/hapus), tanpa perlu refresh manual.
+  useEffect(() => {
+    setData(initialData)
+    setCurrentPage(1)
+    setEditingId(null)
+    setEditError(null)
+  }, [initialData])
 
   // Fungsi untuk mengambil data halaman berikutnya via AJAX (tanpa refresh halaman)
   const handlePageChange = (newPage: number) => {
@@ -34,9 +57,47 @@ export default function TabelTransparansiClient({
         if (result && result.data) {
           setData(result.data)
           setCurrentPage(newPage)
+          setEditingId(null)
+          setEditError(null)
         }
       } catch (error) {
         console.error("Gagal memuat data:", error)
+      }
+    })
+  }
+
+  const handleUpdate = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const form = event.currentTarget
+    const formData = new FormData(form)
+    const id = String(formData.get('id') || '')
+    const next = {
+      jenis: String(formData.get('jenis') || '').trim().toUpperCase(),
+      kategori: String(formData.get('kategori') || '').trim(),
+      uraian: String(formData.get('uraian') || '').trim(),
+      sumber: String(formData.get('sumber') || '').trim() || null,
+      anggaran: Number(formData.get('anggaran') || 0),
+      realisasi: Number(formData.get('realisasi') || 0),
+    }
+
+    if (!id || !next.jenis || !next.kategori || !next.uraian || !Number.isFinite(next.anggaran)) {
+      setEditError('Lengkapi jenis, kategori, uraian, dan anggaran terlebih dahulu.')
+      return
+    }
+
+    setEditError(null)
+    startTransition(async () => {
+      try {
+        await ubahDanaAction(formData)
+        setData((prev) =>
+          prev
+            .map((item) => (item.id === id ? { ...item, ...next } : item))
+            .filter((item) => !jenisFilter || item.jenis === jenisFilter)
+        )
+        setEditingId(null)
+      } catch (error) {
+        console.error('Gagal menyimpan perubahan:', error)
+        setEditError('Gagal menyimpan perubahan. Silakan coba lagi.')
       }
     })
   }
@@ -47,7 +108,7 @@ export default function TabelTransparansiClient({
       {isPending && (
         <div className="absolute inset-0 bg-white/60 backdrop-blur-3xs flex items-center justify-center z-10 transition-all">
           <div className="inline-flex items-center gap-2 bg-slate-900 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md">
-            <Loader2 className="w-4 h-4 animate-spin text-blue-400" /> Memuat data...
+            <Loader2 className="w-4 h-4 animate-spin text-emerald-400" /> Memuat data...
           </div>
         </div>
       )}
@@ -81,49 +142,131 @@ export default function TabelTransparansiClient({
                     month: 'short',
                     year: 'numeric'
                   })
+                  const isEditing = editingId === item.id
+                  const jenisOptions = JENIS_OPTIONS.some((option) => option.value === item.jenis)
+                    ? JENIS_OPTIONS
+                    : [...JENIS_OPTIONS, { value: item.jenis, label: item.jenis }]
 
                   return (
-                    <tr key={item.id} className="hover:bg-slate-50 transition align-top">
-                      <td className="px-4 py-3">
-                        <span className={`px-2 py-1 text-[10px] font-bold rounded-lg ${
-                          item.jenis === 'PENDAPATAN' 
-                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
-                            : item.jenis === 'BELANJA' 
-                            ? 'bg-blue-50 text-blue-700 border border-blue-200' 
-                            : 'bg-purple-50 text-purple-700 border border-purple-200'
-                        }`}>
-                          {item.jenis}
-                        </span>
-                        <div className="text-[11px] text-slate-500 mt-1 font-medium">{item.kategori}</div>
-                      </td>
-                      <td className="px-4 py-3 space-y-1">
-                        <div className="font-bold text-slate-800">{item.uraian}</div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          {item.sumber && <span className="text-[11px] text-slate-400">Sumber: {item.sumber}</span>}
-                          <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded border border-slate-200 font-medium">
-                            📅 {formattedDate}
+                    <Fragment key={item.id}>
+                      <tr className="hover:bg-slate-50 transition align-top">
+                        <td className="px-4 py-3">
+                          <span className={`px-2 py-1 text-[10px] font-bold rounded-lg ${
+                            item.jenis === 'PENDAPATAN' 
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+                              : item.jenis === 'BELANJA' 
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+                              : 'bg-teal-50 text-teal-700 border border-teal-200'
+                          }`}>
+                            {item.jenis}
                           </span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 font-semibold text-slate-800">
-                        Rp {Number(item.anggaran).toLocaleString('id-ID')}
-                      </td>
-                      <td className="px-4 py-3 font-semibold text-emerald-600">
-                        Rp {Number(item.realisasi).toLocaleString('id-ID')}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <form action={hapusDanaAction}>
-                          <input type="hidden" name="id" value={item.id} />
-                          <button
-                            type="submit"
-                            className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold rounded-lg transition border border-rose-200 inline-flex items-center gap-1 cursor-pointer"
-                            title="Hapus data ini"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" /> Hapus
-                          </button>
-                        </form>
-                      </td>
-                    </tr>
+                          <div className="text-[11px] text-slate-500 mt-1 font-medium">{item.kategori}</div>
+                        </td>
+                        <td className="px-4 py-3 space-y-1">
+                          <div className="font-bold text-slate-800">{item.uraian}</div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            {item.sumber && <span className="text-[11px] text-slate-400">Sumber: {item.sumber}</span>}
+                            <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded border border-slate-200 font-medium">
+                              📅 {formattedDate}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 font-semibold text-slate-800">
+                          Rp {Number(item.anggaran).toLocaleString('id-ID')}
+                        </td>
+                        <td className="px-4 py-3 font-semibold text-emerald-600">
+                          Rp {Number(item.realisasi).toLocaleString('id-ID')}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex flex-col items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingId(isEditing ? null : item.id)
+                                setEditError(null)
+                              }}
+                              className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold rounded-lg transition border border-emerald-200 inline-flex items-center gap-1 cursor-pointer"
+                              title="Ubah data ini"
+                            >
+                              <Pencil className="w-3.5 h-3.5" /> Edit
+                            </button>
+                            <form action={hapusDanaAction}>
+                              <input type="hidden" name="id" value={item.id} />
+                              <button
+                                type="submit"
+                                className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold rounded-lg transition border border-rose-200 inline-flex items-center gap-1 cursor-pointer"
+                                title="Hapus data ini"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" /> Hapus
+                              </button>
+                            </form>
+                          </div>
+                        </td>
+                      </tr>
+
+                      {isEditing && (
+                        <tr className="bg-emerald-50/40">
+                          <td colSpan={5} className="px-4 py-4">
+                            <form onSubmit={handleUpdate} className="space-y-3">
+                              <input type="hidden" name="id" value={item.id} />
+                              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                                <label className="space-y-1">
+                                  <span className="block text-[11px] font-semibold text-slate-600">Jenis</span>
+                                  <select name="jenis" defaultValue={item.jenis} className={editInputClass}>
+                                    {jenisOptions.map((option) => (
+                                      <option key={option.value} value={option.value}>{option.label}</option>
+                                    ))}
+                                  </select>
+                                </label>
+                                <label className="space-y-1">
+                                  <span className="block text-[11px] font-semibold text-slate-600">Kategori / Bidang</span>
+                                  <input name="kategori" defaultValue={item.kategori} required className={editInputClass} />
+                                </label>
+                                <label className="space-y-1">
+                                  <span className="block text-[11px] font-semibold text-slate-600">Uraian / Kegiatan</span>
+                                  <input name="uraian" defaultValue={item.uraian} required className={editInputClass} />
+                                </label>
+                                <label className="space-y-1">
+                                  <span className="block text-[11px] font-semibold text-slate-600">Sumber Dana</span>
+                                  <input name="sumber" defaultValue={item.sumber ?? ''} className={editInputClass} />
+                                </label>
+                                <label className="space-y-1">
+                                  <span className="block text-[11px] font-semibold text-slate-600">Anggaran (Rp)</span>
+                                  <input type="number" step="0.01" name="anggaran" defaultValue={Number(item.anggaran)} required className={editInputClass} />
+                                </label>
+                                <label className="space-y-1">
+                                  <span className="block text-[11px] font-semibold text-slate-600">Realisasi (Rp)</span>
+                                  <input type="number" step="0.01" name="realisasi" defaultValue={Number(item.realisasi)} className={editInputClass} />
+                                </label>
+                              </div>
+
+                              {editError && (
+                                <p className="text-[11px] font-semibold text-rose-600">{editError}</p>
+                              )}
+
+                              <div className="flex flex-wrap justify-end gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditingId(null)
+                                    setEditError(null)
+                                  }}
+                                  className="px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer"
+                                >
+                                  Batal
+                                </button>
+                                <button
+                                  type="submit"
+                                  className="px-3 py-1.5 rounded-lg bg-emerald-600 text-xs font-bold text-white hover:bg-emerald-700 transition cursor-pointer"
+                                >
+                                  Simpan Perubahan
+                                </button>
+                              </div>
+                            </form>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
                   )
                 })}
               </tbody>

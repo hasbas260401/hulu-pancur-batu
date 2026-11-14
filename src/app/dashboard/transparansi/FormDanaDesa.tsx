@@ -4,9 +4,10 @@ import { useState } from 'react'
 
 interface FormDanaDesaProps {
   tambahDanaAction: (formData: FormData) => Promise<void>
+  defaultTahun: number
 }
 
-export default function FormDanaDesa({ tambahDanaAction }: FormDanaDesaProps) {
+export default function FormDanaDesa({ tambahDanaAction, defaultTahun }: FormDanaDesaProps) {
   const [jenisSelect, setJenisSelect] = useState('PENDAPATAN')
   const [jenisLainnya, setJenisLainnya] = useState('')
 
@@ -33,7 +34,7 @@ export default function FormDanaDesa({ tambahDanaAction }: FormDanaDesaProps) {
           <input
             type="number"
             name="tahun"
-            defaultValue={2026}
+            defaultValue={defaultTahun}
             required
             className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-none"
           />
@@ -63,7 +64,7 @@ export default function FormDanaDesa({ tambahDanaAction }: FormDanaDesaProps) {
             onChange={(e) => setJenisLainnya(e.target.value)}
             placeholder="Contoh: DANA DARURAT"
             required={jenisSelect === 'LAINNYA'}
-            className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white focus:outline-none uppercase font-bold text-blue-600"
+            className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white focus:outline-none uppercase font-bold text-emerald-600"
           />
         </div>
       )}
@@ -146,7 +147,7 @@ export default function FormDanaDesa({ tambahDanaAction }: FormDanaDesaProps) {
 
       <button
         type="submit"
-        className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-xs transition mt-2"
+        className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-xs transition mt-2"
       >
         Simpan Data Dana Desa
       </button>

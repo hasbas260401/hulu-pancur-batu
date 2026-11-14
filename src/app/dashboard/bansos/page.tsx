@@ -1,11 +1,11 @@
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import { connection } from 'next/server'
 import { revalidatePath } from 'next/cache'
 import { Suspense } from 'react'
 import { auth } from '@/auth'
+import { getBansosScope } from '@/lib/warga-scope'
+import { redirect } from 'next/navigation'
 import BansosClient from './BansosClient'
-
-const prisma = new PrismaClient()
 
 export default function BansosAdminPage({
   searchParams,
@@ -22,7 +22,7 @@ export default function BansosAdminPage({
       fallback={
         <div className="flex items-center justify-center min-h-[50vh] w-full">
           <div className="flex items-center gap-3 bg-slate-900 text-white px-5 py-3 rounded-xl text-xs font-bold shadow-lg">
-            <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+            <div className="w-4 h-4 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin"></div>
             <span>Memuat data...</span>
           </div>
         </div>
@@ -54,12 +54,20 @@ async function BansosContent({
   const currentPage = Number(resolvedParams?.page) || 1
   const skip = (currentPage - 1) * PAGE_SIZE
 
-  const session = await auth()
-  const user = session?.user as any
+  const scope = await getBansosScope()
+  if (!scope.ok) {
+    redirect(scope.status === 401 ? '/login' : '/dashboard')
+  }
 
-  const isKadus = user?.role === 'KADUS'
-  const userDusunId = user?.dusunId
-  const dusunFilter = isKadus && userDusunId ? { warga: { dusunId: userDusunId } } : {}
+  const session = await auth()
+  const user = {
+    ...(session?.user as any),
+    role: scope.role,
+    dusunNama: scope.dusunNama,
+  }
+
+  const isKadus = scope.role === 'KADUS'
+  const dusunFilter = isKadus ? { warga: { dusunId: scope.dusunFilter.dusunId } } : {}
 
   const [totalPkh, totalBpnt, totalBltDd, totalPbiJk, totalBst, totalKeseluruhan] = await Promise.all([
     prisma.bansos.count({ where: { AND: [dusunFilter, { program: { contains: 'PKH', mode: 'insensitive' } }] } }),
@@ -100,25 +108,25 @@ async function BansosContent({
 
   async function hapusBansosAction(formData: FormData) {
     'use server'
-    const id = formData.get('id') as string
-    try {
-      if (id) {
-        if (isKadus && userDusunId) {
-          const targetData = await prisma.bansos.findUnique({
-            where: { id },
-            include: { warga: { select: { dusunId: true } } }
-          })
-          if (!targetData || targetData.warga?.dusunId !== userDusunId) {
-            throw new Error('Akses ditolak!')
-          }
-        }
-        await prisma.bansos.delete({ where: { id } })
-        revalidatePath('/dashboard/bansos')
-      }
-    } catch (error: any) {
-      console.error('Gagal hapus bansos:', error)
-      throw new Error(error.message || 'Gagal menghapus data.')
-    }
+    // Diperiksa ulang ke database karena aksi dapat dipanggil tanpa lewat halaman.
+    const access = await getBansosScope()
+    if (!access.ok) throw new Error(access.message)
+
+    const id = String(formData.get('id') ?? '').trim().slice(0, 100)
+    if (!id) return
+
+    const target = await prisma.bansos.findFirst({
+      where: {
+        id,
+        ...(access.role === 'KADUS' ? { warga: { dusunId: access.dusunFilter.dusunId } } : {}),
+      },
+      select: { id: true },
+    })
+    if (!target) throw new Error('Data bansos tidak ditemukan atau bukan wilayah Anda.')
+
+    await prisma.bansos.delete({ where: { id: target.id } })
+    revalidatePath('/dashboard/bansos')
+    revalidatePath(`/dashboard/warga`)
   }
 
   return (

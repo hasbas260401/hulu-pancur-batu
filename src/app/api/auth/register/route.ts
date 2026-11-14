@@ -1,13 +1,10 @@
 import { NextResponse } from 'next/server'
-import { PrismaClient, Prisma } from '@prisma/client'
+import { Prisma } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
-import nodemailer from 'nodemailer'
 import crypto from 'crypto'
 import { rateLimit, clientIp } from '@/lib/rate-limit'
-
-const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient }
-const prisma = globalForPrisma.prisma ?? new PrismaClient()
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
+import { sendMail } from '@/lib/mailer'
 
 // <helpers>
 const OTP_TTL_MS = 10 * 60 * 1000 // kode berlaku 10 menit
@@ -51,14 +48,6 @@ function checkOtp(store: Map<string, OtpEntry>, email: string, otp: string, now 
 
 const g = globalThis as unknown as { regOtp?: Map<string, OtpEntry> }
 const otpStore = g.regOtp ?? (g.regOtp = new Map<string, OtpEntry>())
-
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL_SERVER_USER,
-    pass: process.env.EMAIL_SERVER_PASSWORD,
-  },
-})
 
 const NO_STORE = { 'Cache-Control': 'no-store' }
 
@@ -117,18 +106,18 @@ export async function POST(req: Request) {
       otpStore.set(email, { otp: generatedOtp, expires: Date.now() + OTP_TTL_MS, wrong: 0 })
 
       try {
-        await transporter.sendMail({
-          from: `"Desa Hulu Pancur Batu" <${process.env.EMAIL_SERVER_USER}>`,
+        await sendMail({
+          fromName: 'Desa Hulu Pancur Batu',
           to: email,
           subject: 'Kode Verifikasi OTP Pendaftaran Akun Warga',
           html: `
             <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #e2e8f0; border-radius: 10px;">
-              <h2 style="color: #1e3a8a; margin-bottom: 5px;">Pemerintahan Desa Hulu Pancur Batu</h2>
+              <h2 style="color: #065f46; margin-bottom: 5px;">Pemerintahan Desa Hulu Pancur Batu</h2>
               <p style="color: #64748b; font-size: 14px;">Sistem Administrasi & Layanan Kependudukan</p>
               <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 15px 0;" />
               <p>Halo,</p>
               <p>Berikut adalah kode verifikasi OTP Anda untuk pendaftaran akun warga:</p>
-              <div style="background: #f8fafc; padding: 15px; text-align: center; font-size: 24px; font-weight: bold; letter-spacing: 5px; color: #2563eb; border-radius: 8px; margin: 20px 0;">
+              <div style="background: #f0fdf4; padding: 15px; text-align: center; font-size: 24px; font-weight: bold; letter-spacing: 5px; color: #047857; border-radius: 8px; margin: 20px 0;">
                 ${generatedOtp}
               </div>
               <p style="font-size: 13px; color: #64748b;">Kode ini berlaku 10 menit. Jangan berikan kode ini kepada siapa pun.</p>
